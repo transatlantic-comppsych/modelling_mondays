@@ -334,7 +334,7 @@ $$
  \text{Likelihood  Ratio} = -2*(\text{Log Likelihood}_{0.5} - \text{Log Likelihood}_{ML} )
 $$ {#eq-4}
 
-Now, you may wonder about what that *2* is doing there–not to worry about it for the moment, its presence allows you to assume this difference follows a chi-squared distribution. Don't forget the minus sign–you will need this as the values of the chi-squared distribution are all positive.
+Now, you may wonder about what that *2* is doing there--not to worry about it for the moment, its presence allows you to assume this difference follows a chi-squared distribution. Don't forget the minus sign--you will need this as the values of the chi-squared distribution are all positive.
 
 ```{r echo = F, warning = F, message = F}
 
@@ -583,9 +583,7 @@ Below is a probability tree. Where do you find the sensitivity and where do you 
 
 This quantity is fundamental to all medical tests and indeed all tests where you want to draw inferences about the goodness of the test in a given population. It is the **Positive Predictive Value and it is a Bayesian quantity.** Using very basic algebra and the rules derived above, I will try to demonstrate this in the picture below.
 
-![](deriving%20Bayes.jpg)
-
-The two key equations here are:
+![](Image_1.jpeg)The two key equations here are:
 
 $$
 P(homicide+|test+) = \frac{P(test+|homicide+).P(homicide+)}{P(test+)}
@@ -594,7 +592,7 @@ $$ {#eq-12}
 Notice the similarity of this equation with that of Equation 11. I have also added in red some nomenclature that we will be encountering very soon, in the next lesson. Now, as I have derived above, there is another way to derive the same quantity using the known properties of the sensitivity and specificity and the prevalence of the population, without needing any other information.
 
 $$
-P(homicide+|test+) = \frac{P(test+|homicide+).P(homicide+)}{sensitivity.P(homicide+) + (1-specificity).P(homicide+)}
+P(homicide+|test+) = \frac{P(test+|homicide+).P(homicide+)}{sensitivity.P(homicide+) + (1-specificity).P(homicide-)}
 $$ {#eq-13}
 
 Look at the denominators of both Eq. 12 and 13. These are the marginal likelihoods (also called the evidence). They are cumbersome, but not nearly as complex as what we will be encountering soon, even for solving the same simple binomial problem that we had solved in the last lesson. Indeed, these denominators are often analytically intractable and require approaches such as MCMC algorithms.
