@@ -706,7 +706,7 @@ Now, all you have to do is add the results of
 
 Indeed, when you try to add the results of summing eqs 15 and 17, you get to the marginal probability, which is all that equation 18 is asking you to do, except in fancy formalism:
 
-(50167/99980\*99980/105) = 0.50169 which is the same as what you would get if you simply divided the marginal for gender with the total i.e. 50169/10\^5
+(50167/99980\*99980/10\^5) = 0.50169 which is the same as what you would get if you simply divided the marginal for gender with the total i.e. 50169/10\^5
 
 **PHEW!**
 
@@ -720,7 +720,7 @@ Here is an exercise to consolidate expected values, we will follow up with the B
 
 a\) look at the table above with the observed values, let's call this table O_table and also look at the one with the expected values E_table . Try to conceive of them as locations on some imaginary map. All those numbers are nothing but locations on that multi-dimensional map. Indeed, each table is a matrix and a matrix can be thought of as a location in a space that has the matrices dimensions. The question arises then: how far away is O_table from E_table? What simple mathematical operation would allow you to answer this question?
 
-b\) how can you tweak that simple mathematical operation to calcuulate on the distance.
+b\) how can you tweak that simple mathematical operation to calculate on the distance.
 
 c\) if you want to do the statistical estimation you will need some extra tools. Hint: what is a common way, e.g. used in simple regression estimation to get rid of annoying signs (positive, negative, without taking the absolute though)? another hint: you will need a distribution for deciding. It is very coommon
 
