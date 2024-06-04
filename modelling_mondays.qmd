@@ -2,9 +2,15 @@
 title: "Modelling Mondays"
 author: "Argyris Stringaris"
 date: "05-06-2024"
-format: pdf
+format: 
+  pdf:
+    toc: true
+    toc-depth: 1
+    toc-title: Table of contents
 editor: visual
 ---
+
+# Week 1: The Likelihood Function
 
 ## Motivation
 
@@ -18,7 +24,7 @@ Typically, we think of a DGP as a mathematical formula that gives rise to a dist
 
 But in a more abstract way, the question is, what are the mechanisms through which a set of data are generated, be it voting patterns, brain data or league games.
 
-Consider, for example, a sample of the general population filling in a questionnaire about depression. Figure 1a. shows a typical pattern, that of a right skewed truncated distribution. The "mechanism" that gives rise to the right skew is the fact that there are far more people without many symptoms and hence many people close to the zero mark. It is also truncated because scores can't go below zero and can't go above the max of the sum of the scale. By contrast, Figure 1b, shows the
+Consider, for example, a sample of the general population filling in a questionnaire about depression. Figure 1a. shows a typical pattern, that of a right-skewed truncated distribution. The "mechanism" that gives rise to the right skew is the fact that there are far more people without many symptoms and hence many people close to the zero mark. It is also truncated because scores can't go below zero and can't go above the max of the sum of the scale. By contrast, Figure 1b, shows the depression scores of a clinical population.
 
 ```{r echo = F, warning = F, message = F }
 library(stevemisc)
@@ -70,7 +76,7 @@ d\) simulate the process to study it better.
 
 ## The omniscient person: knowing the DGS and the correct parameter.
 
-This is someone who knows the function and its probability, is certain about the DGP. Let's say that theyknow that they are dealing with the normal distribution, which is formalised as:
+This is someone who knows the function and its probability, is certain about the DGP. Let's say that they know that they are dealing with the normal distribution, which is formalised as:
 
 $$
 f(x | \theta) = \frac{1}{\sqrt{2\pi\sigma^2}} \cdot e^{-\frac{(x - \theta)^2}{2\sigma^2}}
@@ -124,7 +130,7 @@ $$
 L(\mu, \sigma^2 | x_1, x_2, \ldots, x_n) = \prod_{i=1}^{n} \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x_i - \mu)^2}{2\sigma^2}\right)
 $$ {#eq-2}
 
-Equation 2 states precisely that: what is the likelihood of this mean and variance, given all these data points? Equation 2 on the right hand side contains the PDF, as above, but what it says is that it takes the probability at each step and multiplies them altogether, this is what that giant Greek $\Pi$ stands for, the product.
+Equation 2 states precisely that: what is the likelihood of this mean and variance, given all these data points? Equation 2 on the right-hand side contains the PDF, as above, but what it says is that it takes the probability at each step and multiplies them altogether, this is what that giant Greek $\Pi$ stands for, the product.
 
 Notice that when I tried this with fewer data points, I was able to get the likelihood, but when I increased them, I needed the natural log. Try it for yourself.
 
@@ -169,6 +175,7 @@ df_log_likelihood %>%
   xlab("Means IQ points")
 
 ```
+# Week 2: The Binomial Distribution
 
 Before we move over to more complex models, let's consider the binomial or Bernoulli distribution. Here are two situations. In the first one, you are a Creator (let's say a game creator, rather than The Creator); in the other you are a detective.
 
@@ -194,7 +201,7 @@ ways_to_choose <- paste("We have" , how_many_ways , "way(s) to choose", k , "obj
 print(ways_to_choose)
 ```
 
-In Equation 3, this quantity is then multiplied with the product of $p^k$ *x* $(1-p)^{n-k}$ . This product is a sequence of possible events of success and failure, for a probability *p* . If you substitute numbers between 1 and, say, 4 (representing possible outcomes in 4 coin tosses) in to them, you would get
+In Equation 3, this quantity is then multiplied with the product of $p^k$ *x* $(1-p)^{n-k}$ . This product is a sequence of possible events of success and failure, for a probability *p* . If you substitute numbers between 1 and, say, 4 (representing possible outcomes in 4 coin tosses) into them, you would get
 
 $p^1$ *x* $(1-p)^{4-1}$
 
@@ -235,7 +242,9 @@ dbinom(1:4, 4, 0.5) # check whether what I have done above fits with what the R 
 
 ```
 
-**Exercise 1.1** Modify the above code to create a game where a coin is tossed 100 times.
+### Exercise 1.1 
+
+Modify the above code to create a game where a coin is tossed 100 times.
 
 a\) Estimate the probabilities for each possible outcome, *k* and store in vector.
 
@@ -276,7 +285,7 @@ plot(k, multipl_the_two) # this is 1c
 
 ```
 
-## The binomial for a detective.
+## The binomial for a detective
 
 Now, suppose that you are the new detective in town. Your first case is that of "Nick the Shark", against whom there are several allegations of setting up fraudulent games. All you have to go by is a sheet of paper where all the outcomes of coin tosses were recorded by one of your informants. There were 271 outcomes that were Heads. You are now asked to find out whether the coin was fair or not.
 
@@ -362,7 +371,7 @@ p_value_LLR_test
 
 After this you can go back to the smart judge and convince her that your finding is very unlikely to have occurred by chance. To help you phrase things better to the judge, I have given you the exercise below.
 
-**Exercise 1.2**
+### Exercise 1.2
 
 a\) How exactly would you phrase your finding? How unlikely is it that Nick's games have occurred by chance?
 
@@ -380,7 +389,7 @@ d\) You do a debrief with your team of detectives and informants. On this occasi
 
 Check out this article here: <https://www.economist.com/science-and-technology/2023/10/15/how-to-predict-the-outcome-of-a-coin-toss>
 
-## Likelihood for the linear regression model
+# Likelihood for the linear regression model
 
 Now let's turn to the simple linear regression model. Let's start by asking how to think formally of the data generating mechanism of any linear model. It should be a
 
@@ -418,7 +427,7 @@ likelihood_linear_regression <- function(beta0, beta1, x, y) {
 # The log-likelihood for different values of beta0 and beta1 REMIND ME TO TELL YOU ABOUT THE #PLAUSIBLE RANGE!
 beta0_values <- seq(0, 4, by = 0.1)  
 beta1_values <- seq(0, 1, by = 0.01)  
-log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind boggling and I have created below an example with a simpler input #and function
+log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
                                Vectorize(function(b0, b1) likelihood_linear_regression(b0, b1, x, y)))
 
 # The MLE for beta0 and beta1
@@ -452,10 +461,11 @@ result_matrix <- outer(input_vector_a, input_vector_b, Vectorize(simple_function
 
 
 ```
+# Week 3: Probability theory and The Bayes Theorem
 
 ## Of Men and Homicides
 
-Before we revisit the above from a Bayesian perspective , we will need a small detour into probability theory.
+Before we revisit the above from a Bayesian perspective, we will need a small detour into probability theory.
 
 About 90% of homicides in Europe are committed by men. How justified is it to say that "men are murderers". Think about this question also by replacing men with immigrant men, foreign men, or foreigners more generally. Think about what may be true in the aggregate (and generates stereotypes) and what is valuable at the individual level. Let's try to tackle this problem in a number of ways.
 
@@ -512,13 +522,13 @@ $$ {#eq-11}
 
 As we will see further down, Bayes links back to the likelihood that we have been discussing and allows us to use priors and
 
-Exercise 3. 1
+### Exercise 3. 1
 
 a\) Calculate conditional probability. b) Do so for a country like Brazil too, where the probability of homicide is about 10-fold higher. c) Comment on whether calling men, foreigners etc murderers may be considered stereotyping. What does it mean for individual prediction and what does it mean for public health and safety.
 
 ## Men, Homicides and marginal probabilities
 
-Now let's look at the problem from a different angle. Let's create a table that captures the above in a representative sample, n = 100,000 of the population in Brazil, where the probability of homicide is about 20/10\^5, the gender ratio is assumed to be equal and the probability that a homicide is commited by a man is 0.9.
+Now let's look at the problem from a different angle. Let's create a table that captures the above in a representative sample, n = 100,000 of the population in Brazil, where the probability of homicide is about 20/10\^5, the gender ratio is assumed to be equal and the probability that a homicide is committed by a man is 0.9.
 
 ```{r echo = F, message = F, warning = F}
 # Total obs
@@ -603,9 +613,9 @@ Meanwhile, I am going to give you some extra code that allows you to play around
 
 Try to understand the basic notion of the Bayesian theorem and apply it to various situations of interest to you, like medical tests, exam results etc. Next time we will pick up again the problem of Nick the Shark and play around with the Bayesian estimation of the finding.
 
-## Week 4: Some more on crime and punishment
+# Week 4: Some more on crime and punishment
 
-### Contingency tables and expected values (a little detour)
+## Contingency tables and expected values (a little detour)
 
 Before we delve into some Bayesian stuff, it may be good to remind ourselves of some very simple principles that would help us decide whether men are more likely to commit crimes according to common standards of significance.
 
@@ -655,7 +665,7 @@ Can you think of a way to get expected values now?
 
 There are two principle ways to think about it which are complementary. Either to think of the "rule of three" from primary school maths, or to think in a Bayesian (or rather generally more abstract) way about it. I will start with the simple way.
 
-Let's start with Females who do not kill, how many would we expect? This is the top left hand corner cell. We **observe** 50167 who have not committed murder and 2 who have. How many would we have expected in each of these two cells? How do we use the term expected? In the sense that ignore the observed column values and say, well there are 50169 (the row total value) overall in 10\^5 people (the overall total). How many would there be in the 99980 (the No column, in which the first cell is situated). It follows that we obtain the **expected value** by doing $50169*99980/(10^5)$ which is 50159 after rounding .
+Let's start with Females who do not kill, how many would we expect? This is the top lefthand corner cell. We **observe** 50167 who have not committed murder and 2 who have. How many would we have expected in each of these two cells? How do we use the term expected? In the sense that ignore the observed column values and say, well there are 50169 (the row total value) overall in 10\^5 people (the overall total). How many would there be in the 99980 (the No column, in which the first cell is situated). It follows that we obtain the **expected value** by doing $50169*99980/(10^5)$ which is 50159 after rounding.
 
 If you do the same for each one of the cells, you get the following table of **expected** values.
 
@@ -710,21 +720,21 @@ Indeed, when you try to add the results of summing eqs 15 and 17, you get to the
 
 **PHEW!**
 
-Does all this make sense? It is quite simple but can be mind boggling.
+Does all this make sense? It is quite simple but can be mind-boggling.
 
 Here is an exercise to consolidate expected values, we will follow up with the Bayesian stuff below.
 
-**Exercise 4.1**
+### Exercise 4.1
 
 *Once you have solved this exercise, you may get a fundamental insight about model evaluation, at least I did when I grasped this.*
 
-a\) look at the table above with the observed values, let's call this table O_table and also look at the one with the expected values E_table . Try to conceive of them as locations on some imaginary map. All those numbers are nothing but locations on that multi-dimensional map. Indeed, each table is a matrix and a matrix can be thought of as a location in a space that has the matrices dimensions. The question arises then: how far away is O_table from E_table? What simple mathematical operation would allow you to answer this question?
+a\) look at the table above with the observed values, let's call this table O_table and also look at the one with the expected values E_table. Try to conceive of them as locations on some imaginary map. All those numbers are nothing but locations on that multi-dimensional map. Indeed, each table is a matrix and a matrix can be thought of as a location in a space that has the matrices dimensions. The question arises then: how far away is O_table from E_table? What simple mathematical operation would allow you to answer this question?
 
 b\) how can you tweak that simple mathematical operation to calculate on the distance.
 
-c\) if you want to do the statistical estimation you will need some extra tools. Hint: what is a common way, e.g. used in simple regression estimation to get rid of annoying signs (positive, negative, without taking the absolute though)? another hint: you will need a distribution for deciding. It is very coommon
+c\) if you want to do the statistical estimation you will need some extra tools. Hint: what is a common way, e.g. used in simple regression estimation to get rid of annoying signs (positive, negative, without taking the absolute though)? another hint: you will need a distribution for deciding.
 
-### Back to Bayes and meeting the beta distribution
+## Back to Bayes and meeting the beta distribution
 
 From the discourse above, we need to remember equation 17, which I am writing here in its general form:
 
@@ -756,7 +766,7 @@ I will skip the chapter on analytic methods for obtaining posteriors in the book
 
 You will all know about the debate between Bayesians and Frequentists. It has been raging for years and it usually focuses on the issue of the **priors** and whether Bayesians are unduly **subjective**. Indeed, Bayesians argue that when you try to make a statement about data, you ought to take prior knowledge into account. Perhaps more importantly, they extend the argument to say, well, you should actually update your model as new knowledge accumulates! Only in this way will you be able to be fair to the state of the world.
 
-I won't go into the various arguments, except to say that even frequentists make a lot of decisions that require scientific **judgement** . The most notable one is the likelihood model that we choose. As we have seen, this is key to all modelling of data. Bayesians would say that their approach provides a principled way of assessing the probability of parameters but also of models. How? We shall see below. I have added some materials about voting patterns and confidence intervals that you may want to study.
+I won't go into the various arguments, except to say that even frequentists make a lot of decisions that require scientific **judgement**. The most notable one is the likelihood model that we choose. As we have seen, this is key to all modelling of data. Bayesians would say that their approach provides a principled way of assessing the probability of parameters but also of models. How? We shall see below. I have added some materials about voting patterns and confidence intervals that you may want to study.
 
 For the moment, let's revisit, Nick the gambler.
 
@@ -766,7 +776,7 @@ You remember that we used the binomial distribution as our likelihood model to e
 
 For this let's turn to the beta distribution and highlight some interesting features.
 
-I will start at the end, with a re-writing of the equation 6. 24 in the book for obtainin the posterior distribution of a coin toss with *n* tosses and *k* heads:
+I will start at the end, with a re-writing of the equation 6. 24 in the book for obtaining the posterior distribution of a coin toss with *n* tosses and *k* heads:
 
 $$
 P(\theta \mid k,n) = beta(\theta|\alpha + k, \beta + n -k) 
@@ -855,7 +865,7 @@ Now what do you do with this information? Can you get confidence intervals? Yes!
 
 What can you with these data, can you use them for prediction of future tosses.
 
-**Exercise 4.2**
+### Exercise 4.2
 
 a\) What is your understanding of what Ipsos, the polsters are saying here. Check out page 3, does it make sense?
 
