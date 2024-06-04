@@ -5,7 +5,7 @@ date: "05-06-2024"
 format: 
   pdf:
     toc: true
-    toc-depth: 1
+    toc-depth: 3
     toc-title: Table of contents
 editor: visual
 ---
@@ -173,6 +173,78 @@ df_log_likelihood %>%
   ggtitle("A Likelihood Function for IQ")+
   ylab("Log-Likelihood")+
   xlab("Means IQ points")
+
+```
+## Likelihood for the linear regression model
+
+Now let's turn to the simple linear regression model. Let's start by asking how to think formally of the data generating mechanism of any linear model. It should be a
+
+$$
+y_i = \beta_0 + \beta_1 x_i + \epsilon_i 
+$$ {#eq-5}
+
+where, $\epsilon_i$ follows a normal distribution with mean zero and variance $\sigma^2$
+
+$$
+L(\beta_0, \beta_1 | x_1, y_1, x_2, y_2, \ldots, x_n, y_n) = \prod_{i=1}^{n} f(y_i | \beta_0 + \beta_1 x_i)
+$$ {#eq-6}
+
+where $$f(y_i | \beta_0 + \beta_1 x_i) $$ {#eq-7} is the probability density function (PDF) of the normal distribution with mean $( \mu_i = \beta_0 + \beta_1 x_i )$ and constant variance $sigma^2$
+
+To demonstrate this, I will first create synthetic data
+
+```{r echo = F, warning = F, message = F}
+# Some synthetic data
+set.seed(1974)  
+n <- 100  # obs
+x <- rnorm(n, mean = 5, sd = 2)  # predictor
+epsilon <- rnorm(n, mean = 0, sd = 1)  # error 
+beta0 <- 2  # intercept arbitrary
+beta1 <- 0.6  # slope also arbitrary
+y <- beta0 + beta1 * x + epsilon  # simulate the dependent variable
+
+# Define the likelihood function for simple linear regression
+likelihood_linear_regression <- function(beta0, beta1, x, y) {
+  mu <- beta0 + beta1 * x  # predicted values
+  log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  # log-likelihood i have used # dnorm to save space, could have equally used the spelt out function that I created above
+  return(log_likelihood)
+}
+
+# The log-likelihood for different values of beta0 and beta1 REMIND ME TO TELL YOU ABOUT THE #PLAUSIBLE RANGE!
+beta0_values <- seq(0, 4, by = 0.1)  
+beta1_values <- seq(0, 1, by = 0.01)  
+log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
+                               Vectorize(function(b0, b1) likelihood_linear_regression(b0, b1, x, y)))
+
+# The MLE for beta0 and beta1
+max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE)
+mle_beta0 <- beta0_values[max_indices[1]]
+mle_beta1 <- beta1_values[max_indices[2]]
+
+# Plot log-likelihood surface A PAIN!
+library(plot3D)
+persp3D(beta0_values, beta1_values, log_likelihood_values, xlab = "Beta0", ylab = "Beta1", zlab = "Log-Likelihood",
+        main = "Log-Likelihood Surface for Simple Linear Regression")
+points3D(mle_beta0, mle_beta1, max(log_likelihood_values), col = "red", pch = 16)
+
+
+```
+
+In the code chunk below, I explain how the outer product and vectorisation works.
+
+```{r warning = F, message = F , echo = F}
+# Show the above with a simple function
+simple_function <- function(a, b) {
+  return((a + b)^2)
+}
+
+# Create input vectors
+input_vector_a <- c(1, 2, 3)
+input_vector_b <- c(10, 20, 30)
+
+# Apply the function to all combinations of elements from the input vectors
+result_matrix <- outer(input_vector_a, input_vector_b, Vectorize(simple_function))
+
 
 ```
 # Week 2: The Binomial Distribution
@@ -389,78 +461,6 @@ d\) You do a debrief with your team of detectives and informants. On this occasi
 
 Check out this article here: <https://www.economist.com/science-and-technology/2023/10/15/how-to-predict-the-outcome-of-a-coin-toss>
 
-# Likelihood for the linear regression model
-
-Now let's turn to the simple linear regression model. Let's start by asking how to think formally of the data generating mechanism of any linear model. It should be a
-
-$$
-y_i = \beta_0 + \beta_1 x_i + \epsilon_i 
-$$ {#eq-5}
-
-where, $\epsilon_i$ follows a normal distribution with mean zero and variance $\sigma^2$
-
-$$
-L(\beta_0, \beta_1 | x_1, y_1, x_2, y_2, \ldots, x_n, y_n) = \prod_{i=1}^{n} f(y_i | \beta_0 + \beta_1 x_i)
-$$ {#eq-6}
-
-where $$f(y_i | \beta_0 + \beta_1 x_i) $$ {#eq-7} is the probability density function (PDF) of the normal distribution with mean $( \mu_i = \beta_0 + \beta_1 x_i )$ and constant variance $sigma^2$
-
-To demonstrate this, I will first create synthetic data
-
-```{r echo = F, warning = F, message = F}
-# Some synthetic data
-set.seed(1974)  
-n <- 100  # obs
-x <- rnorm(n, mean = 5, sd = 2)  # predictor
-epsilon <- rnorm(n, mean = 0, sd = 1)  # error 
-beta0 <- 2  # intercept arbitrary
-beta1 <- 0.6  # slope also arbitrary
-y <- beta0 + beta1 * x + epsilon  # simulate the dependent variable
-
-# Define the likelihood function for simple linear regression
-likelihood_linear_regression <- function(beta0, beta1, x, y) {
-  mu <- beta0 + beta1 * x  # predicted values
-  log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  # log-likelihood i have used # dnorm to save space, could have equally used the spelt out function that I created above
-  return(log_likelihood)
-}
-
-# The log-likelihood for different values of beta0 and beta1 REMIND ME TO TELL YOU ABOUT THE #PLAUSIBLE RANGE!
-beta0_values <- seq(0, 4, by = 0.1)  
-beta1_values <- seq(0, 1, by = 0.01)  
-log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
-                               Vectorize(function(b0, b1) likelihood_linear_regression(b0, b1, x, y)))
-
-# The MLE for beta0 and beta1
-max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE)
-mle_beta0 <- beta0_values[max_indices[1]]
-mle_beta1 <- beta1_values[max_indices[2]]
-
-# Plot log-likelihood surface A PAIN!
-library(plot3D)
-persp3D(beta0_values, beta1_values, log_likelihood_values, xlab = "Beta0", ylab = "Beta1", zlab = "Log-Likelihood",
-        main = "Log-Likelihood Surface for Simple Linear Regression")
-points3D(mle_beta0, mle_beta1, max(log_likelihood_values), col = "red", pch = 16)
-
-
-```
-
-In the code chunk below, I explain how the outer product and vectorisation works.
-
-```{r warning = F, message = F , echo = F}
-# Show the above with a simple function
-simple_function <- function(a, b) {
-  return((a + b)^2)
-}
-
-# Create input vectors
-input_vector_a <- c(1, 2, 3)
-input_vector_b <- c(10, 20, 30)
-
-# Apply the function to all combinations of elements from the input vectors
-result_matrix <- outer(input_vector_a, input_vector_b, Vectorize(simple_function))
-
-
-```
 # Week 3: Probability theory and The Bayes Theorem
 
 ## Of Men and Homicides
