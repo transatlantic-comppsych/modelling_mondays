@@ -175,6 +175,7 @@ df_log_likelihood %>%
   xlab("Means IQ points")
 
 ```
+
 ## Likelihood for the linear regression model
 
 Now let's turn to the simple linear regression model. Let's start by asking how to think formally of the data generating mechanism of any linear model. It should be a
@@ -222,11 +223,11 @@ mle_beta0 <- beta0_values[max_indices[1]]
 mle_beta1 <- beta1_values[max_indices[2]]
 
 # Plot log-likelihood surface A PAIN!
-library(plot3D)
-persp3D(beta0_values, beta1_values, log_likelihood_values, xlab = "Beta0", ylab = "Beta1", zlab = "Log-Likelihood",
-        main = "Log-Likelihood Surface for Simple Linear Regression")
-points3D(mle_beta0, mle_beta1, max(log_likelihood_values), col = "red", pch = 16)
-
+# library(plot3D)
+# persp3D(beta0_values, beta1_values, log_likelihood_values, xlab = "Beta0", ylab = "Beta1", zlab = "Log-Likelihood",
+#         main = "Log-Likelihood Surface for Simple Linear Regression")
+# points3D(mle_beta0, mle_beta1, max(log_likelihood_values), col = "red", pch = 16)
+# 
 
 ```
 
@@ -247,6 +248,7 @@ result_matrix <- outer(input_vector_a, input_vector_b, Vectorize(simple_function
 
 
 ```
+
 # Week 2: The Binomial Distribution
 
 Before we move over to more complex models, let's consider the binomial or Bernoulli distribution. Here are two situations. In the first one, you are a Creator (let's say a game creator, rather than The Creator); in the other you are a detective.
@@ -314,7 +316,7 @@ dbinom(1:4, 4, 0.5) # check whether what I have done above fits with what the R 
 
 ```
 
-### Exercise 1.1 
+### Exercise 1.1
 
 Modify the above code to create a game where a coin is tossed 100 times.
 
@@ -809,7 +811,7 @@ prior_dist <- dbeta(theta, alpha, beta)
 plot(theta, prior_dist)
 ```
 
-Let now return to Nick...
+Let now return to Nick... Play around with the priors by tuning the $\alpha$ and $\beta$ to various values and see what happens.
 
 ```{r echo = F, warning = F, message = F}
 
@@ -874,3 +876,176 @@ a\) What is your understanding of what Ipsos, the polsters are saying here. Chec
 b\) Can you see the relationship with this paper?
 
 <https://www.tandfonline.com/doi/pdf/10.1080/01621459.2018.1448823?casa_token=phCtUIGpXcsAAAAA:TnbmBljQ5CaMfCreH_qxMLeIvdEKpJD_tTDPEE0cYK3a_-q0JBHYb3CUqkKHzf2V-gBYW64r5nEfyQ>
+
+# Week 5: Self Study
+
+# Week 6: Inference in Bayes through sampling.
+
+This week we will try to familiarise ourselves with the notion and practicalities of sampling from the posterior. We are going to make small steps into this as it can become quite complex and is probably best revisited as the practical need arises (and it will indeed come up a lot in what we do).
+
+## Why use sampling?
+
+Notice the denominator of Equation 22, also called the evidence or the total space of the . Such an integral can be fairly simple, so that mere mortals like ourselves might stand a chance to solve analytically. But it can become quite complex, some times so complex that even evolved machines need help and special tricks to solve. But that does not matter and the reason is that we can make some reasonable assumptions that will help us arrive at knowledge about our parameters of inference in any given model.
+
+This week, we will discuss one form of sampling, namely sampling from the posterior. We will assume that we have arrived at a posterior and will sample from it. It is to demonstrate the principle of sampling. We will only allude to what will become our main engine to support our Bayesian inference, namely Monte Carlo methods and chiefly the Metropolis-Hastings algorithms. We will however try to use today's example to fit our first models in Stan a probabilistic programming languages and brms, a package in R that talks to Stan.
+
+## Some simple sampling in the case of Nick
+
+The simple sampling from the posterior comes from chapter 3 of the McElreath book, Rethinking Statistics–a great resource by the way.
+
+Let's consider the example of Nick the gambler again. We remember 271 heads out of 630 tosses was what our detective learnt about Nick's gambling games. In chpaters 2 and 3 we looked a lot at the likelihood, which as we recall is represented by the binomial probability density function. Please do refer to the formalisms above; here I will only remind us that we can use the dbinom function in base R for it. Let's then build a Bayesian model as we did above, in Week 4.
+
+This code below generates the posterior distribution.
+
+```{r }
+n_heads <- 271
+n_tosses <- 630
+
+possible_prob_values <- seq(from = 0 , to = 1, length.out = 10^3) # these are the values  that our parameter for the probability takes
+
+likelihood <- dbinom(n_heads, n_tosses, prob = possible_prob_values)  # our likelihood
+
+prior <- rep(1: length(possible_prob_values)) # this prior is uniform, corresponds to a beta(1,1)
+
+Bayes_numerator <- likelihood*prior # this is the numerator of Eqs 21 and 22.
+
+posterior <- Bayes_numerator# /sum(Bayes_numerator) # the outcome of Eqs 21 and 22.
+
+```
+
+For me the simplest way of understanding what is going on is the following: to what value of the parameters (i.e. probabilities) does the maximum value of the posterior correspond to? I plot this here.
+
+```{r}
+plot(possible_prob_values, posterior)
+```
+
+You can also ask in the way we have before
+
+```{r}
+possible_prob_values[which.max(posterior)]
+```
+
+This number is very close to what we got when we did the maximum likelihood (which should be no surprise, since we used flat priors.
+
+To illustrate that this can also be achieved through a draw 1000 values out of the posterior.
+
+```{r}
+sampled_posterior <- sample(possible_prob_values, # the parameter values to sample from
+       posterior, # these are the probabilities that we input
+       size = 10^3, # the size of it, 
+       replace = T # got to do this
+       )
+
+plot(density(sampled_posterior))
+
+```
+
+Now this may not sound trivial, but you just did your first sampling from the posterior...
+
+### Exercise 6.1
+
+a)  Find the values of mean, median, mode and max of the sampled posterior. What do you observe?
+b)  Instead of sampling from the posterior, sample from the Bayes numerator.
+c)  Use the sample from (b) to re-run (a), what do you observe?
+d)  Do (b) and (c) using the likelihood instead of the Bayes numerator.
+e)  Find the 95% intervals–what would you call those intervals?
+
+Here is a little pointer for 5.1.e
+
+![](confidence_intervals_McElreath.jpg)
+
+## Simplifying posterior sampling
+
+The general point though of Exercise 5.1 is to illustrate something that the Farrell & Lewandowski book mentions in chapter 7, namely equation 7.1. It states that all we need to know to do the sampling is the Bayes numerator, i.e. the likelihood multiplied by the prior. This is because the evidence, i.e. the denominator (i.e. the marginal likelihood) is a constant in relation to this quantity. Therefore, equation 22:
+
+$$
+P(\theta\mid y) = \frac {P(y \mid\theta ). P(\theta)}{\int_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)d\theta}
+$$
+
+can be reduced to:
+
+$$
+P(\theta\mid y) \propto P(y \mid\theta ). P(\theta)
+$$ {#eq-25}
+
+Where $\propto$ means proportional to, the posterior is proportional to the Bayes numerator, i.e. the likelihood times the prior.
+
+Therefore, we can use algorithms like the Metropolis-Hastings, which we will talk about in more detail in the next few weeks, to arrive at inferences.
+
+For this week though, let's estimate the Nick problem using hardcore Bayesian models...
+
+First off, with brms, the very useful package: *Bayesian Regression Models Using Stan*, an R package that is structured like lme, but allows you to fit a wide range of linear and non-linear models. It uses an Hamilton Monte Carlo estimator, based on similar principles to MHMC that we will be seeing later.
+
+Here is some brms code to run the Nick model.
+
+```{r results='hide', warning=F, message=F}
+library(brms)
+
+brm(data = list(nheads = 271),
+family = binomial(link = "identity"),
+nheads | trials(630) ~ 0 + Intercept,
+# we are using a flat prior--like the uniform above. 
+prior(beta(1, 1), class = b, lb = 0, ub = 1),
+iter = 2000, warmup = 500, # we will discuss this in more detail above.
+seed = 3)
+
+
+
+
+```
+
+### Exercise 6.2
+
+a\. go through the code above line by line. What is the model, see "nheads \| trials(630) \~ 0 + Intercept"
+
+b\. run the code above and look at how long it takes, why, what is happening there.
+
+c\. assign the model above to an object called "my_first_brms_model". Use summary to view the output. What do you notice about the estimate?
+
+Now let's push the boundaries and try to do all this in Stan.
+
+```{r results='hide', warning=F, message=F}
+library(rstan)
+
+# Data preparation
+data_list <- list(nheads = 271, N = 630)
+
+# Stan model code
+stan_code <- "
+data {
+  int<lower=0> nheads;
+  int<lower=0> N;
+}
+parameters {
+  real<lower=0, upper=1> p;
+}
+model {
+  p ~ beta(1, 1);
+  nheads ~ binomial(N, p);
+}
+"
+
+# Compile the model
+model <- stan_model(model_code = stan_code)
+
+# Fit the model
+fit <- sampling(model, 
+                data = data_list, 
+                iter = 2000, 
+                warmup = 500, 
+                seed = 3)
+
+# Print the summary of the fit
+print(fit)
+
+```
+
+### Exercise 6.3
+
+a\. Do what you did for Exercise 6.2, but this time for the Stan model.
+
+b\. Does the Bayes denominator appear anywhere here?
+
+b\. Whose grave is depicted in the photo below. Hint: it is in East London (Photo courtesy of Dr LA)
+
+![](a_remarkable_grave.jpeg)
