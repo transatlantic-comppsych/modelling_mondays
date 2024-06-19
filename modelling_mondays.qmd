@@ -1049,3 +1049,73 @@ b\. Does the Bayes denominator appear anywhere here?
 b\. Whose grave is depicted in the photo below. Hint: it is in East London (Photo courtesy of Dr LA)
 
 ![](a_remarkable_grave.jpeg)
+
+### A note on likelihood and notation. 
+
+People wondered yesterday about the following.
+
+We have written the likelihood of a model, say the binomial as:
+
+$$
+\mathcal{L}(\theta \mid x)
+$$
+
+Which seems to clash apparently with the following notation for the likelihood that we see in the numerator of Eq 21 or 22, i.e. the Bayesian formulations:
+
+$$
+P(x\mid\theta)
+$$
+
+The confusion arises from the following. **The likelihood** $\mathcal{L}(\theta \mid x)$ **denotes the probability with which some value x of the outcome variable *X* is observed when** $\theta$ **assumes a particular value**. Indeed, as we said our first lesson, in equation 1 taking the probability density function of the normal as an example, we write:
+
+$$
+f(x | \theta) = \frac{1}{\sqrt{2\pi\sigma^2}} \cdot e^{-\frac{(x - \theta)^2}{2\sigma^2}}
+$$
+
+i.e. a function of the value of *x* with $\theta$ fixed. Often you will see the notation $f(x, \theta)$ which avoids the notion that somehow x is conditioned on $\theta$.
+
+I repeat here: **The likelihood** $\mathcal{L}(\theta \mid x)$ **denotes the probability with which some value x of the outcome variable *X* is observed when** $\theta$ **assumes a particular value.** For this reason, the likelihood in probability notation must be written as $P(X=x \mid \theta)$ which is what we have in the Bayes numerator as the likelihood.
+
+To make this clear, let's go to back to the Nick example.
+
+The likelihood is obviously given by the binomial:
+
+$$\mathcal{L}(p|n,k) = \binom{n}{k} p^k (1-p)^{n-k}$$ {#eq-27}
+
+which in Nick's case is:
+
+$$
+\mathcal{L}(p \mid n = 630, k = 271) = \frac{630!}{271! \cdot 359!} p^{271} (1 - p)^{359}
+$$
+
+When we run this over many different values of *p* , we get the likelihood curve that we have seen above. Now, let's run this for **a particular p value** say *p* = *0.5* i.e. a fair coin.
+
+```{r}
+dbinom(271,630, 0.5)
+```
+
+This is quite a small number. Let's now do it for *p* = *0.431* i.e. the value we know maximises the likelihood:
+
+```{r}
+dbinom(271,630, 0.431)
+```
+
+Now this is a much bigger number, as expected.
+
+What is each of these numbers though? They are probabilities of observing value *x* given a value of $\theta$ . Therefore, in the first case we have $P(n = 630, k = 271\mid \theta = 0.5)$ and in the second case $P(n = 630, k = 271\mid \theta = 0.431)$. Each one of them is a probability for observing the outcome given a value of the parameter. It is **clearly not** the opposite, i.e. $P(\theta = 0.5\mid n = 630, k = 271)$ or $P(\theta = 0.431\mid n = 630, k = 271)$.
+
+I hope this helps.
+
+### A cultural addendum.
+
+The Manhattan project was a vast operation, funded by government during war leading to huge advances not only in nuclear physics but also in pretty much every aspect of the natural sciences.. Some of you will have watched Oppenheimer the film (I haven't yet) which details a lot about it and the Los Alamos laboratory. Metropolis, the Rosenbluths and Teller co-authored the paper on the Metropolis algorithm in 1953, which has been cited over 50,000 times:*Equation of State Calculations by Fast Computing Machines.*
+
+They were part of the Los Alamos laboratory amongst an incredible array of other scientists. The atmosphere is given by Stanislav Ulam (Mr Stan of Stan programme fame) himself in this Wikipedia excerpt:
+
+"In his memoirs,^[\[12\]](https://en.wikipedia.org/wiki/Nicholas_Metropolis#cite_note-12)^ [Stanislaw Ulam](https://en.wikipedia.org/wiki/Stanislaw_Ulam "Stanislaw Ulam") remembers that a small group, including himself, Metropolis, [Calkin](https://en.wikipedia.org/wiki/John_Williams_Calkin "John Williams Calkin"), [Konopinski](https://en.wikipedia.org/wiki/Emil_Konopinski "Emil Konopinski"), [Kistiakowsky](https://en.wikipedia.org/wiki/George_Kistiakowsky "George Kistiakowsky"), [Teller](https://en.wikipedia.org/wiki/Edward_Teller "Edward Teller") and [von Neumann](https://en.wikipedia.org/wiki/John_von_Neumann "John von Neumann"), spent several evenings at [Los Alamos](https://en.wikipedia.org/wiki/Los_Alamos,_New_Mexico "Los Alamos, New Mexico") playing poker. They played for very small sums, but: "Metropolis once described what a triumph it was to win ten dollars from John von Neumann, author of a famous treatise on game theory. He then bought his book for five dollars and pasted the other five inside the cover as a symbol of his victory."
+
+It also tells you about where the name Monte Carlo may be coming from for such approaches to inference.
+
+The last author, of the Metropolis paper is Augusta Teller, a Hungarian scientist and computer programmer. She was married to Edmund Teller, the physicist who is most probably depicted as Dr Strangelove in Kubrick's film, which is a critique of nuclear weapons and their destructiveness, made in teh 60ies (and a landmark for cinema with Peter Sellers in three different roles!). Teller is said to have been very hurt by Kubrick's character until the end of his life. Here is Sellers as Strangelove:
+
+![](download (1).jpeg)
