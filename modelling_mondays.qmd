@@ -1134,7 +1134,7 @@ c\) understanding the relationship between the likelihood and intercept and slop
 
 d\) understanding gradient descent and loss functions.
 
-### The HSE data. 
+### The HSE data.
 
 For the moment, we will use only the 16 and above data from HSE and concern ourselves with the variables Height, Weight (up to 100kg), Sex and Age without any missing data, to make our lives easy for paedagogic purposes.
 
@@ -1218,7 +1218,7 @@ df_hse_wk7 <- as.data.frame(lapply(df_hse_wk7, function(x) {
 
 ```
 
-### Fitting our first linear regression model 
+### Fitting our first linear regression model
 
 In this chapter we will be trying to **estimate people's weight given their height.**
 
@@ -1316,7 +1316,7 @@ What is this estimate? What does it mean.
 As we will see below, a linear model with an intercept only is the mean of the outcome variable. Below is some code to see this. Perhaps more important is the insight that this mean value is the most likely value if you use the likelihood function for the normal (go back to Week 1 to remind yourselves, I am using the code below)
 
 ```{r}
-mean(df_nse_wk7$Height) ## this is the mean
+mean(df_hse_wk7$Height) ## this is the mean
 
 # remember the likelihood function of the normal
 log_likelihood_normal <-  function(x, theta, sigma) {
@@ -1331,10 +1331,10 @@ log_likelihood_normal <-  function(x, theta, sigma) {
 # Find the log-likelihood of height in this dataset. 
 
 mu_values <- seq(from = 120, to = 220,by = 0.5) # Range of mu values to test I am using here the range of possible values
-sigma = sd(df_nse_wk7$Height) # I am cheating here, giving it the  stdev that I know 
+sigma = sd(df_hse_wk7$Height) # I am cheating here, giving it the  stdev that I know 
 #obviously, I could iterate the function over many values of the sigma too.
 
-log_likelihood_values <- sapply(mu_values, function(mu) log_likelihood_normal(df_nse_wk7$Height, mu, sigma))
+log_likelihood_values <- sapply(mu_values, function(mu) log_likelihood_normal(df_hse_wk7$Height, mu, sigma))
 
 # This gives me the MLE
 mle <- mu_values[which.max(log_likelihood_values)] # htis is the value of our 
@@ -1347,7 +1347,7 @@ mtext(paste0("The maximum likelihood for the height data is ", mle), side=3)
 
 ```
 
-### But what is the slope and the new intercept? 
+### But what is the slope and the new intercept?
 
 For this, I will first fit the linear model in OLS and plot it.
 
@@ -1435,7 +1435,7 @@ model {
 summary(fit_slope_stan)
 ```
 
-Again all three methods converge very well. But now the intercept is different. What does it mean. \
+Again all three methods converge very well. But now the intercept is different. What does it mean.\
 Perhaps more importantly, what is the magic behind the calculations that the three powerful machines do?
 
 I will try to give some intuition before we move on to the analytical solution in OLS (and in the next chapters delve more into Bayes regression).
@@ -1458,13 +1458,8 @@ But, remember that because points could be above (positive) or below the line (n
 
 The function that helps find such distances is generally called a loss function and ordinary least squares is a prototype of it. For OLS, this sum of **squared errors (SSE)** is the **loss function *L*** and is written as follows:
 
-\begin{aligned}
-SSE = L(\hat{\beta}_0, \hat{\beta}_1) & = \sum_{i=1}^n(y_i - \hat y_i)^2  \\
-& = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i))^2 \\
-
-
-\end{aligned}
 $$
+\begin{aligned}SSE = L(\hat{\beta}_0, \hat{\beta}_1) & = \sum_{i=1}^n(y_i - \hat y_i)^2  \\& = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i))^2 \\\end{aligned}
 $$
 
 where $y_i$ are the observed and $y_i$ the predicted values.
@@ -1533,16 +1528,16 @@ You can think of the loss function as an attempt to climb down a mountain, or ra
 
 Here is the figure of a mountain in relief, for those of you who like mountaineering.
 
-![](advanced_contours_guide_relief (1).jpg)
+![](advanced_contours_guide_relief%20(1).jpg)
 
 ```{r}
 library(plotly)
 
 # Reshape SSE values into a matrix for the contour plot
-SSE_matrix <- matrix(SSE, nrow = length(intercepts), ncol = length(slopes), byrow = TRUE)
+SSE_matrix <- matrix(SSE, nrow = length(intercept), ncol = length(slopes), byrow = TRUE)
 
 # Plto
-fig_loss <- plot_ly(x = intercepts, y = slopes, z = SSE_matrix, 
+fig_loss <- plot_ly(x = intercept, y = slopes, z = SSE_matrix, 
                type = "surface", colorscale = "Blues") %>%
   layout(scene = list(
     xaxis = list(title = "Intercept (β0)"),
