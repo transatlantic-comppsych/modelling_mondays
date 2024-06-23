@@ -3,7 +3,7 @@ title: "Modelling Mondays"
 author: "Argyris Stringaris"
 date: "05-06-2024"
 format: 
-  pdf:
+  html:
     toc: true
     toc-depth: 3
     toc-title: Table of contents
@@ -1560,7 +1560,7 @@ $$
 \begin{aligned}
 SSE & = \sum_{i=1}^n(y_i - \hat y_i)^2  \\
 & = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i))^2 \\
-& = \sum_{i=1}^ny_i - (\hat \beta_0 - \hat \beta_1.x_i)^2
+& = \sum_{i=1}^ny_i - \hat \beta_0 - \hat \beta_1.x_i)^2
 \end{aligned}
 $$
 
