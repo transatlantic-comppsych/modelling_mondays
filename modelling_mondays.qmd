@@ -1050,7 +1050,7 @@ b\. Whose grave is depicted in the photo below. Hint: it is in East London (Phot
 
 ![](a_remarkable_grave.jpeg)
 
-### A note on likelihood and notation. 
+### A note on likelihood and notation.
 
 People wondered yesterday about the following.
 
@@ -1118,4 +1118,564 @@ It also tells you about where the name Monte Carlo may be coming from for such a
 
 The last author, of the Metropolis paper is Augusta Teller, a Hungarian scientist and computer programmer. She was married to Edmund Teller, the physicist who is most probably depicted as Dr Strangelove in Kubrick's film, which is a critique of nuclear weapons and their destructiveness, made in teh 60ies (and a landmark for cinema with Peter Sellers in three different roles!). Teller is said to have been very hurt by Kubrick's character until the end of his life. Here is Sellers as Strangelove:
 
-![](download (1).jpeg)
+![](download%20(1).jpeg)
+
+## Week 7: Regression and the deep dive into the loss
+
+The purpose of this week's lesson is to remind ourselves of some fundamental regression knowledge. It is so fundamental that we will need it throughout our journey into computational science.
+
+Specifically, we will
+
+a\) introduce a new dataset the Health Survey for England.
+
+b\) start by fitting the linear regression model in three ways: with ordinary least squares, and in the two Bayesian approaches, brms and Stan.
+
+c\) understanding the relationship between the likelihood and intercept and slope.
+
+d\) understanding gradient descent and loss functions.
+
+### The HSE data. 
+
+For the moment, we will use only the 16 and above data from HSE and concern ourselves with the variables Height, Weight (up to 100kg), Sex and Age without any missing data, to make our lives easy for paedagogic purposes.
+
+```{r}
+#I got the Health Survey for England data
+library(haven) # need it as it is stata
+hse16_eul_v5 <- read_dta("hse16_eul_v5.dta")
+head(hse16_eul_v5)
+
+turn_num_missing <-  # a little function to deal with missingness
+  function(variable){
+  
+  variable[variable<0] <- NA
+  
+return(variable)
+  
+}
+
+var_list <- list(
+hse16_eul_v5$Weight, 
+hse16_eul_v5$Sex, 
+hse16_eul_v5$Height)
+
+# apply the function
+hse16_eul_v5[, c("Weight", "Sex", "Height")] <- lapply(var_list, turn_num_missing)
+
+
+hse16_eul_v5$Sex <- factor(hse16_eul_v5$Sex, # need labels for sex to make things easier
+levels = c(1,2),
+labels = c("male", "female"))
+
+#describe height
+# summary(hse16_eul_v5$Height)
+# hist(hse16_eul_v5$Height) # seems skewed probably due to young people
+
+# can see that there are some very young people. Let's keep those >=16
+df_hse_16_above <- hse16_eul_v5[hse16_eul_v5$Age35g>=7,]
+df_hse_16_above$Height # and this is now pretty normal.
+
+# because of some non linearities at the edges (to which we will return)
+# let's also cap at a weight of 100kg. 
+df_hse_16_above_up_to_100kg <- df_hse_16_above[df_hse_16_above$Weight<=100,]
+
+# and finally, let's just sample 1000 rows at random without any missing data on the
+# key variables weight, age, sex, height
+
+# select key variables
+retain_vars <- c("Weight", "Sex", "Height", "Age35g")
+
+reduced_df_hse_16_above_up_to_100kg <- df_hse_16_above_up_to_100kg[, retain_vars]
+
+# exclude any missing data to make your life easier
+no_missing_reduced_df_hse_16_above_up_to_100kg <- na.omit(reduced_df_hse_16_above_up_to_100kg)
+
+# sample 1000 rows
+df_hse_wk7 <- no_missing_reduced_df_hse_16_above_up_to_100kg[sample(nrow(no_missing_reduced_df_hse_16_above_up_to_100kg),1000, 1974), ]
+
+# now plot the main numeric variables
+numeric_columns <- sapply(df_hse_wk7, is.numeric)
+df_numeric <- df_hse_wk7[, numeric_columns]
+
+par(mfrow = c(ncol(df_numeric), 1), mar = c(4, 4, 2, 1))
+for(i in 1: ncol(df_numeric)){
+  hist(df_numeric[[i]], main = colnames(df_numeric)[i])
+}
+
+# and here are the proportions of females per 1000
+table(df_hse_wk7$Sex)
+
+
+# finally, you need to remove the labels--this happens when you introduce data from stata and labels get in the way
+
+# Convert haven_labelled variables to numeric or factor
+df_hse_wk7 <- as.data.frame(lapply(df_hse_wk7, function(x) {
+  if (inherits(x, "haven_labelled")) {
+    return(as.numeric(as.character(x)))  # Convert to numeric
+  } else {
+    return(x)
+  }
+}))
+
+```
+
+### Fitting our first linear regression model 
+
+In this chapter we will be trying to **estimate people's weight given their height.**
+
+The basic regression model can be stated in the following way:
+
+$$y_i = \beta_0 + \beta_1.xi + error$$
+
+where $\beta_0$ is called the intercept and $\beta_1$ is the slope. in our case $y_i$ is the height for each person (observation) and $x_i$ is the weight of each person.
+
+But for reasons that will become apparent I will fit this model with an **intercept only** initially, i.e. without taking weight into account.
+
+We will fit the mode in three ways: our usual linear regression with least squares OLS in R, brms and Stan. **Do not get too hung up on the fitting of these models in R, that is not the point of this week.**
+
+**OLS intercept only**
+
+```{r}
+model_ols_intercept <- lm(Height ~ 1, df_hse_wk7)
+summary(model_ols_intercept)
+```
+
+**brms intercept only**
+
+```{r}
+# Load the brms library
+library(brms)
+
+priors <- 
+  prior(normal(170, 10), class = "Intercept" # I am giving it here(and below for stan) what I believe to be a reasonable prior. You can play around with others
+)
+
+# Fit the model using brms
+model_brms_intercept <- brm(
+  formula = Height ~ 1,  # intercept only
+  data = df_hse_wk7,  
+  family = gaussian(),  
+  prior = priors,  
+  chains = 2,  
+  iter = 2000,  
+  warmup = 500,  
+  seed = 1974 
+)
+
+# Print summary of the model
+summary(model_brms_intercept)
+
+```
+
+**Stan intercept only**
+
+```{r}
+library(rstan)
+# Define the Stan model for intercept-only with weakly informative priors
+stan_code_intercept <- "
+data {
+  int<lower=0> N;  // number of observations
+  vector[N] y;     // outcome variable
+}
+parameters {
+  real mu;  // intercept (mean of the outcome)
+  real<lower=0> sigma;  // standard deviation, constrained to be positive
+}
+model {
+  mu ~ normal(170, 10);  // weakly informative prior for the intercept
+  sigma ~ normal(0, 10);  // weakly informative prior for the standard deviation, truncated to be positive
+  y ~ normal(mu, sigma);  // likelihood
+}
+"
+
+# Tell Stan where to find the N and Y 
+  stan_data <- list(
+  N = nrow(df_hse_wk7),
+  y = df_hse_wk7$Height
+)
+
+  # and fit the model in stan
+  fit_intercept_stan <- stan(
+  model_code = stan_code_intercept, 
+  data = stan_data,  
+  chains = 2,  
+  iter = 2000,  
+  warmup = 500,  
+  seed = 1974  
+)
+
+# Print summary of the model
+summary(fit_intercept_stan)
+```
+
+The bottom line of all this is that in all three cases the estimate for the intercept is about 166, 8 cm.
+
+What is this estimate? What does it mean.
+
+### The intercept only is the sample mean
+
+As we will see below, a linear model with an intercept only is the mean of the outcome variable. Below is some code to see this. Perhaps more important is the insight that this mean value is the most likely value if you use the likelihood function for the normal (go back to Week 1 to remind yourselves, I am using the code below)
+
+```{r}
+mean(df_nse_wk7$Height) ## this is the mean
+
+# remember the likelihood function of the normal
+log_likelihood_normal <-  function(x, theta, sigma) {
+  log_pdf <- log(1 / (sqrt(2 * pi * sigma^2)) * exp(-((x - theta)^2) / (2 * sigma^2)))
+  log_likelihood <- sum(log_pdf)  # Log-likelihood for the entire dataset
+  return(log_likelihood)
+}
+
+
+
+
+# Find the log-likelihood of height in this dataset. 
+
+mu_values <- seq(from = 120, to = 220,by = 0.5) # Range of mu values to test I am using here the range of possible values
+sigma = sd(df_nse_wk7$Height) # I am cheating here, giving it the  stdev that I know 
+#obviously, I could iterate the function over many values of the sigma too.
+
+log_likelihood_values <- sapply(mu_values, function(mu) log_likelihood_normal(df_nse_wk7$Height, mu, sigma))
+
+# This gives me the MLE
+mle <- mu_values[which.max(log_likelihood_values)] # htis is the value of our 
+
+plot(mu_values,log_likelihood_values) # as you can see the likelihood is at its max at mle
+abline(v = mle, col = "red")
+mtext(paste0("The maximum likelihood for the height data is ", mle), side=3)
+
+
+
+```
+
+### But what is the slope and the new intercept? 
+
+For this, I will first fit the linear model in OLS and plot it.
+
+**OLS slope model**
+
+```{r}
+#First let's plot
+
+plot(df_hse_wk7$Weight, df_hse_wk7$Height, pch = 19, col = 'blue', 
+     xlab = "Weight", ylab = "Height",
+     main = "True Heights and Predicted Heights")
+model_ols_slope <- lm(Height ~ Weight, data = df_hse_wk7)
+summary(model_ols_slope )
+
+```
+
+Now let's fit the OLS, brms, and Stan models for the full model with the slope.
+
+model_ols_slope \<- lm(Height \~ Weight, df_hse_wk7)
+
+**brms model with slope**
+
+```{r}
+
+priors <- c(
+  prior(normal(170, 10), class = "Intercept"),  
+  prior(normal(0, 10), class = "b")  # Prior for the slope (coefficient for Weight)
+)
+# Fit the model using brms
+model_brms_slope <- brm(
+  formula = Height ~ Weight,  # intercept only
+  data = df_hse_wk7,  
+  family = gaussian(),  
+  prior = priors,  
+  chains = 2,  
+  iter = 2000,  
+  warmup = 500,  
+  seed = 1974 
+)
+
+# Print summary of the model
+summary(model_brms_slope)
+```
+
+**Stand model with code**
+
+```{r}
+stan_code_slope <- "
+data {
+  int<lower=0> N;  // number of observations
+  vector[N] y;     // outcome variable
+  vector[N] x;     // predictor variable
+}
+parameters {
+  real alpha;  // intercept
+  real beta;   // slope
+  real<lower=0> sigma;  // standard deviation, constrained to be positive
+}
+model {
+  alpha ~ normal(170, 10);  // weakly informative prior for the intercept
+  beta ~ normal(0, 10);   // weakly informative prior for the slope
+  sigma ~ normal(0, 10) T[0,];  // weakly informative prior for the standard deviation, truncated to be positive
+  y ~ normal(alpha + beta * x, sigma);  // likelihood
+}
+"
+
+# Tell Stan where to find the N and Y 
+  stan_data_slope <- list(
+  N = nrow(df_hse_wk7),
+  y = df_hse_wk7$Height,
+  x = df_hse_wk7$Weight
+)
+
+  # and fit the model in stan
+  fit_slope_stan <- stan(
+  model_code = stan_code_slope, 
+  data = stan_data_slope,  
+  chains = 2,  
+  iter = 2000,  
+  warmup = 500,  
+  seed = 1974  
+)
+
+# Print summary of the model
+summary(fit_slope_stan)
+```
+
+Again all three methods converge very well. But now the intercept is different. What does it mean. \
+Perhaps more importantly, what is the magic behind the calculations that the three powerful machines do?
+
+I will try to give some intuition before we move on to the analytical solution in OLS (and in the next chapters delve more into Bayes regression).
+
+The Loss Function and Brute Force Slope finding.
+
+Let's look again at the graph of Heights and Weights
+
+```{r}
+plot(df_hse_wk7$Weight, df_hse_wk7$Height, pch = 19, col = 'blue', 
+     xlab = "Weight", ylab = "Height",
+     main = "True Heights and Predicted Heights")
+```
+
+What you are trying to do with regression (and in some ways, with most of computational modelling) is to fit the best possible curves to observed data. How do you know what curve is (fits) best to these data.
+
+Well, intuitively, it is the line that is closest to each point in the dataset. Suppose you only had three points, you would want to find the line that has the smallest total distance (also called error) from each point, To estimate this you would take distance_1, distance_2, distance_3, representing each distance from the point to your line for several candidate lines and add them up each time. The one with the smallest total distance would be the winner. Make sense?
+
+But, remember that because points could be above (positive) or below the line (negative), they could cancel each other out. Therefore, you do something else, you add up either their absolute values, or more commonly their squared values, i.e. the squared distances.
+
+The function that helps find such distances is generally called a loss function and ordinary least squares is a prototype of it. For OLS, this sum of **squared errors (SSE)** is the **loss function *L*** and is written as follows:
+
+\begin{aligned}
+SSE = L(\hat{\beta}_0, \hat{\beta}_1) & = \sum_{i=1}^n(y_i - \hat y_i)^2  \\
+& = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i))^2 \\
+
+
+\end{aligned}
+$$
+$$
+
+where $y_i$ are the observed and $y_i$ the predicted values.
+
+Having defined this function, we could simply start fitting lots of curves and see which one fits the data in the best way, ie minimises the Loss Function that we defined above. It would be tedious to do by hand, but you can ask the computer to do. I have prepared this for you below. As you will see, what it does is it fits so many curves on the graph that the dots become invisible, lots of red lines cover it like a carpet!
+
+This approach is akin to the gradient descent method (where partial differentials are used, see below), but in a brute force sort of way.
+
+So I am basically taking the formula $$y_i = \beta_0 + \beta_1.xi$$
+
+and generate a crazy number of curves.
+
+```{r}
+
+
+intercept <- seq(from = 140 , to = 160, by = 0.5)
+slopes <- seq(from = 0 , to = 1, by = 0.025)
+combos_inter_slope <- data.frame(expand.grid(intercept, slopes)) # create the combos
+y_pred <- list()
+
+ for(i in 1:nrow(combos_inter_slope)){
+  
+
+    y_pred[[i]] <- combos_inter_slope[i,1] +  combos_inter_slope[i,2]*df_hse_wk7$Weight
+    
+  }
+  
+#df_pred_heights <-do.call(rbind, y_pred)
+#colnames(df_pred_heights) <- "predicted_heights"
+
+
+
+
+# true heights as dots
+plot(df_hse_wk7$Weight, df_hse_wk7$Height, pch = 19, col = 'blue', 
+     xlab = "Weight", ylab = "Height",
+     main = "True Heights and Predicted Heights")
+
+# looping to add predicted heights 
+for (i in 1:length(y_pred)) {
+  lines(df_hse_wk7$Weight, y_pred[[i]], col = rgb(1, 0, 0, alpha = 0.5))
+}
+
+#legend
+legend("topright", legend = c("True Heights", "Predicted Heights"),
+       col = c("blue", "red"), pch = c(19, NA), lty = c(NA, 1))
+
+SSE <- 0
+for(i in 1: length(y_pred)){
+  
+  SSE[i] <- sum((y_pred[[i]] - df_hse_wk7$Height)^2, na.rm = T)
+  
+  
+}
+
+print(combos_inter_slope[which.min(SSE),1])
+print(combos_inter_slope[which.min(SSE),2])
+
+
+
+```
+
+The fantastic thing is that I get pretty much the same values for the slope and intercept by using this brute force method, namely 0.325 and143 respectively.
+
+You can think of the loss function as an attempt to climb down a mountain, or rather reach its bottom. Indeed, the loss function for two parameters is a three-dimensional space (think about more parameters...). You need to find the position for each of the intercept and slope that minimise it, i.e. their best combination.
+
+Here is the figure of a mountain in relief, for those of you who like mountaineering.
+
+![](advanced_contours_guide_relief (1).jpg)
+
+```{r}
+library(plotly)
+
+# Reshape SSE values into a matrix for the contour plot
+SSE_matrix <- matrix(SSE, nrow = length(intercepts), ncol = length(slopes), byrow = TRUE)
+
+# Plto
+fig_loss <- plot_ly(x = intercepts, y = slopes, z = SSE_matrix, 
+               type = "surface", colorscale = "Blues") %>%
+  layout(scene = list(
+    xaxis = list(title = "Intercept (β0)"),
+    yaxis = list(title = "Slope (β1)"),
+    zaxis = list(title = "Sum of Squared Errors (SSE)"),
+    zaxis = list(tickvals = pretty(range(SSE), 10))
+  ))
+
+# Show the plot
+fig_loss
+```
+
+### A principled way of solving OLS: partial derivatives to help navigate rugged landscapes
+
+### Calculate the partial derivatives and use them for regression
+
+As we said above, we need to minimse the sum of squared errors, i.e. find the minima for it. This is what differntiation does, in the case of one variable it is a derivative, in the case of two or more it is a partial derivative. Let's remind ourselves of the problem:
+
+$$
+\begin{aligned}
+SSE & = \sum_{i=1}^n(y_i - \hat y_i)^2  \\
+& = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i))^2 \\
+& = \sum_{i=1}^ny_i - (\hat \beta_0 - \hat \beta_1.x_i)^2
+\end{aligned}
+$$
+
+Now let's take the derivative with respect to the intercept. By doing this, we will arrive at some expression that we will be able to set to zero and solve to find the minima.
+
+$$
+\begin{aligned}
+{\frac{\partial SSE}{\partial \hat \beta_0}} = \frac{\partial (y_i - \hat b_0 + \hat \beta_1.x_i)}{\partial \hat \beta_0}\\
+\end{aligned}
+$$
+
+and for the slope
+
+$$
+\begin{aligned}
+{\frac{\partial SSE}{\partial \hat \beta_1}} = \frac{\partial (y_i - \hat b_1 + \hat \beta_1.x_i)}{\partial \hat \beta_1}\\
+\end{aligned}
+$$
+
+and then solving each one of them by setting each equal to zero. We can derive this together in class and here is a [link](https://uregina.ca/~kozdron/Teaching/Regina/252Winter05/Handouts/least_squares.pdf) where this is done. It is fundamentally simple, but involves a few algebraic tricks to get to the end product which is the following for the intercept:
+
+$$
+\hat{\beta}_0 = \overline{y} - \hat{\beta}_1 \overline{x}
+$$
+
+and for the slope:
+
+$$
+\begin{aligned}
+\hat \beta_1 = \frac{\sum_{i=1}^{n} (x_i - \overline{x})(y_i - \overline{y})} {\sum_{i=1}^{n} (x_i - \overline{x})^2} 
+& = \frac{SXY}{SXX}
+\end{aligned}
+$$
+
+There are several things to marvel at here, including the importance of the mean in all this. This is what your programme churns out and allows you to do the maths.
+
+Indeed, let's see whether we can recover the slope, for example, through our simple formula
+
+```{r}
+# to make your life easier I have created a subset of the data so 
+# you don't get hung up on missingness
+weight_no_missing <- df_hse_wk7$Weight
+height_no_missing <- df_hse_wk7$Height
+
+df_no_missing <- data.frame(
+  weight_no_missing = weight_no_missing,
+  height_difference = weight_no_missing
+)
+
+lm(height_no_missing ~ weight_no_missing, df_no_missing)
+
+
+mean_height <-     mean(height_no_missing)
+
+mean_weight <- mean(weight_no_missing)
+
+weight_difference <- weight_no_missing -
+    mean_weight
+
+
+
+
+height_difference <- height_no_missing - 
+  mean_height
+
+SXY <- sum(weight_difference*height_difference)
+SXX  <- sum(weight_difference^2)
+
+beta_1 <- SXY/SXX
+
+beta_0 <- mean(height_no_missing) - beta_1*mean(weight_no_missing)
+
+print(paste(beta_1, beta_0))
+
+
+```
+
+### Using maximum likelihood to find the slope and intercept
+
+Finally, we can view this as a likelihood problem. The proper likelihood (see the explicit stan code), here is based on a normal pdf. I had fitted something like this above, in week 1, let's return to it.
+
+```{r}
+
+# The log-likelihood for different values of beta0 and beta1 REMIND ME TO TELL YOU ABOUT THE #PLAUSIBLE RANGE!
+beta0_values <- seq(130, 160, by = 1)  
+beta1_values <- seq(0, 1, by = 0.01)  
+log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
+                               Vectorize(function(b0, b1) likelihood_linear_regression(b0, b1, df_hse_wk7$Weight  , df_hse_wk7$Height)))
+
+# The MLE for beta0 and beta1
+max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE)
+mle_beta0 <- beta0_values[max_indices[1]]
+mle_beta1 <- beta1_values[max_indices[2]]
+
+fig_likelihood <- plot_ly(x = beta0_values, y = beta1_values, z = log_likelihood_values, 
+               type = "surface", colorscale = "Blues") %>%
+  layout(scene = list(
+    xaxis = list(title = "Intercept (β0)", titlefont = list(size = 18, color = "black")),
+    yaxis = list(title = "Slope (β1)", titlefont = list(size = 18, color = "black")),
+    zaxis = list(title = "Log-Likelihood", titlefont = list(size = 18, color = "black")),
+    annotations = list(
+      list(x = 145, y = 0.5, z = max(log_likelihood_values), text = "Optimal Point", 
+           showarrow = TRUE, arrowhead = 2, ax = 20, ay = -40)
+    )
+  ))
+
+# Show the plot
+fig_likelihood
+```
+
+Lo and behold! Using the likelihood function that we had developed in Week 1, also approximates the intercept and slope
+
+### 
