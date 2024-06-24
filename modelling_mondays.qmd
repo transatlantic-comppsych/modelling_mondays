@@ -1674,3 +1674,77 @@ fig_likelihood
 Lo and behold! Using the likelihood function that we had developed in Week 1, also approximates the intercept and slope
 
 ### 
+
+```{r}
+likelihood_linear_regression <- function(beta0, beta1, x, y) {
+  mu <- beta0 + beta1 * x  # predicted values
+  log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  
+  return(log_likelihood)
+}
+
+
+prior_beta0 <- function(beta0) {
+  dnorm(beta0, mean = 170, sd = 10, log = TRUE)
+}
+
+prior_beta1 <- function(beta1) {
+  dnorm(beta1, mean = 0.5, sd = 0.1, log = TRUE)
+}
+
+
+beta0_values <- seq(130, 160, by = 1)
+beta1_values <- seq(0, 1, by = 0.01)
+
+# Calculate the log-posterior
+log_posterior <- outer(beta0_values, beta1_values, Vectorize(function(b0, b1) {
+  log_likelihood <- likelihood_linear_regression(b0, b1, df_hse_wk7$Weight, df_hse_wk7$Height)
+  log_prior_beta0 <- prior_beta0(b0)
+  log_prior_beta1 <- prior_beta1(b1)
+  log_posterior <- log_likelihood + log_prior_beta0 + log_prior_beta1
+  return(log_posterior)
+}))
+
+# Convert to probability scale
+posterior <- exp(log_posterior - max(log_posterior))  # Subtract max for numerical stability
+
+# Normalize the posterior
+posterior <- posterior / sum(posterior) # a vector of probabilities
+
+
+set.seed(1974)
+samples <- sample(seq_along(posterior), size = length(posterior), replace = TRUE, prob = posterior). # this gives you positions on the vector
+
+#now you need to translate the vector positions into something that can find the positions 
+# on the specified beta0 and beta1 grid. 
+# what I came up with is the following
+# create the grid of the intercepts and slopes. 
+# the number of rows is the length of the vector
+array_to_find_values <- expand.grid(beta0_values, beta1_values)
+
+df_to_find_values <- data.frame(table(samples))
+
+row_nums <- as.numeric(as.character(df_to_find_values$samples))
+num_times <- as.numeric(as.character(df_to_find_values$Freq))
+
+sampled_intercepts <- list()
+sampled_slopes <- list()
+for(i in 1:nrow(df_to_find_values)){
+  
+ sampled_intercepts[[i]] <- rep(expanded[row_nums,1], num_times)
+ sampled_slopes[[i]] <- rep(expanded[row_nums,2], num_times)
+  
+}
+
+ sampled_intercepts <- unlist( sampled_intercepts)
+ sampled_slopes <- unlist( sampled_slopes)
+mean(sampled_intercepts)
+ mean(sampled_slopes)
+# sampled_beta0 <- beta0_values[(samples - 1) %% length(beta0_values) + 1]
+# sampled_beta1 <- beta1_values[(samples - 1) %/% length(beta0_values) + 1]
+
+
+
+
+
+
+```
