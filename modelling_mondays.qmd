@@ -1171,7 +1171,7 @@ labels = c("male", "female"))
 # hist(hse16_eul_v5$Height) # seems skewed probably due to young people
 
 # can see that there are some very young people. Let's keep those >=16
-df_hse_16_above <- hse16_eul_v5[hse16_eul_v5$Age35g>=7,]
+df_hse_16_above <- hse16_eul_v5[hse16_eul_v5$Age35g>=16,]
 df_hse_16_above$Height # and this is now pretty normal.
 
 # because of some non linearities at the edges (to which we will return)
@@ -1366,7 +1366,10 @@ summary(model_ols_slope )
 
 Now let's fit the OLS, brms, and Stan models for the full model with the slope.
 
-model_ols_slope \<- lm(Height \~ Weight, df_hse_wk7)
+```{r}
+model_ols_slope <- lm(Height ~ Weight, df_hse_wk7)
+summary(model_ols_slope)
+```
 
 **brms model with slope**
 
@@ -1475,7 +1478,7 @@ and generate a crazy number of curves.
 ```{r}
 
 
-intercept <- seq(from = 140 , to = 160, by = 0.5)
+intercept <- seq(from = 140 , to = 160, by = .5)
 slopes <- seq(from = 0 , to = 1, by = 0.025)
 combos_inter_slope <- data.frame(expand.grid(intercept, slopes)) # create the combos
 y_pred <- list()
@@ -1559,8 +1562,8 @@ As we said above, we need to minimse the sum of squared errors, i.e. find the mi
 $$
 \begin{aligned}
 SSE & = \sum_{i=1}^n(y_i - \hat y_i)^2  \\
-& = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i))^2 \\
-& = \sum_{i=1}^ny_i - \hat \beta_0 - \hat \beta_1.x_i)^2
+& = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i)^2) \\
+& = \sum_{i=1}^n(y_i - \hat \beta_0 - \hat \beta_1.x_i)^2
 \end{aligned}
 $$
 
@@ -1568,7 +1571,7 @@ Now let's take the derivative with respect to the intercept. By doing this, we w
 
 $$
 \begin{aligned}
-{\frac{\partial SSE}{\partial \hat \beta_0}} = \frac{\partial (y_i - \hat b_0 + \hat \beta_1.x_i)}{\partial \hat \beta_0}\\
+{\frac{\partial SSE}{\partial \hat \beta_0}} = \frac{\partial(\sum (y_i - \hat b_0 + \hat \beta_1.x_i)^2)}{\partial \hat \beta_0}\\
 \end{aligned}
 $$
 
@@ -1576,11 +1579,11 @@ and for the slope
 
 $$
 \begin{aligned}
-{\frac{\partial SSE}{\partial \hat \beta_1}} = \frac{\partial (y_i - \hat b_1 + \hat \beta_1.x_i)}{\partial \hat \beta_1}\\
+{\frac{\partial SSE}{\partial \hat \beta_1}} = \frac{\partial (\sum(y_i - \hat b_0 + \hat \beta_1.x_i)^2)}{\partial \hat \beta_1}\\
 \end{aligned}
 $$
 
-and then solving each one of them by setting each equal to zero. We can derive this together in class and here is a [link](https://uregina.ca/~kozdron/Teaching/Regina/252Winter05/Handouts/least_squares.pdf) where this is done. It is fundamentally simple, but involves a few algebraic tricks to get to the end product which is the following for the intercept:
+and then solving each one of them by setting each equal to zero. We can derive this together in class and here is a link where this is done. It is fundamentally simple, but involves a few algebraic tricks to get to the end product which is the following for the intercept:
 
 $$
 \hat{\beta}_0 = \overline{y} - \hat{\beta}_1 \overline{x}
