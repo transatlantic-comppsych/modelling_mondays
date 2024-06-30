@@ -205,7 +205,7 @@ beta1 <- 0.6  # slope also arbitrary
 y <- beta0 + beta1 * x + epsilon  # simulate the dependent variable
 
 # Define the likelihood function for simple linear regression
-likelihood_linear_regression <- function(beta0, beta1, x, y) {
+stan_data_slope <- function(beta0, beta1, x, y) {
   mu <- beta0 + beta1 * x  # predicted values
   log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  # log-likelihood i have used # dnorm to save space, could have equally used the spelt out function that I created above
   return(log_likelihood)
@@ -215,7 +215,7 @@ likelihood_linear_regression <- function(beta0, beta1, x, y) {
 beta0_values <- seq(0, 4, by = 0.1)  
 beta1_values <- seq(0, 1, by = 0.01)  
 log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
-                               Vectorize(function(b0, b1) likelihood_linear_regression(b0, b1, x, y)))
+                               Vectorize(function(b0, b1) stan_data_slope(b0, b1, x, y)))
 
 # The MLE for beta0 and beta1
 max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE)
@@ -1641,9 +1641,13 @@ print(paste(beta_1, beta_0))
 
 ```
 
+## Week 8: Extending the regression model to Bayes
+
+Last week we found the estimates for the intercept and slope by specifying the OLS model and by fitting thousands of curves using brute force. Here I am going to first show the
+
 ### Using maximum likelihood to find the slope and intercept
 
-Finally, we can view this as a likelihood problem. The proper likelihood (see the explicit stan code), here is based on a normal pdf. I had fitted something like this above, in week 1, let's return to it.
+We can view this as a likelihood problem. The proper likelihood (see the explicit stan code above), here is based on a normal probability density function. I had fitted something like this above, in week 1, let's return to the function I had written.
 
 ```{r}
 
@@ -1651,7 +1655,7 @@ Finally, we can view this as a likelihood problem. The proper likelihood (see th
 beta0_values <- seq(130, 160, by = 1)  
 beta1_values <- seq(0, 1, by = 0.01)  
 log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
-                               Vectorize(function(b0, b1) likelihood_linear_regression(b0, b1, df_hse_wk7$Weight  , df_hse_wk7$Height)))
+                               Vectorize(function(b0, b1) stan_data_slope(b0, b1, df_hse_wk7$Weight  , df_hse_wk7$Height)))
 
 # The MLE for beta0 and beta1
 max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE)
@@ -1676,29 +1680,34 @@ fig_likelihood
 
 Lo and behold! Using the likelihood function that we had developed in Week 1, also approximates the intercept and slope
 
-### 
+### The linear regression model as a Bayes model estimated through grid approximation.
+
+We have run the Bayesian model in Stan and in brms above. We will discuss their specification further down. For the time being, let's fit the model in a simple way "by hand" that is without the help of a specialised package. This is to get a fee of what is going on under the hub.
+
+As you will have guessed, we use the likelihood function that we have developed and used above. And, in this Bayesian framework we also use two priors, one for the intercept and one for the slope.
 
 ```{r}
-likelihood_linear_regression <- function(beta0, beta1, x, y) {
+likelihood_linear_regression <- function(beta0, beta1, x, y) { # the likelihood as above
   mu <- beta0 + beta1 * x  # predicted values
   log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  
   return(log_likelihood)
 }
 
 
-prior_beta0 <- function(beta0) {
+prior_beta0 <- function(beta0) { # specifying the prior for the intercept here
   dnorm(beta0, mean = 170, sd = 10, log = TRUE)
 }
 
-prior_beta1 <- function(beta1) {
+prior_beta1 <- function(beta1) { # and for the slope
   dnorm(beta1, mean = 0.5, sd = 0.1, log = TRUE)
 }
 
 
-beta0_values <- seq(130, 160, by = 1)
+beta0_values <- seq(130, 160, by = 1) # the range for the intercept and slope, i.e. my parameter space
 beta1_values <- seq(0, 1, by = 0.01)
 
-# Calculate the log-posterior
+# Calculate the log-posterior ## see in week 1 the addednum about how to understand Vectorize if this is confusing. It can be for me and had to look up.
+
 log_posterior <- outer(beta0_values, beta1_values, Vectorize(function(b0, b1) {
   log_likelihood <- likelihood_linear_regression(b0, b1, df_hse_wk7$Weight, df_hse_wk7$Height)
   log_prior_beta0 <- prior_beta0(b0)
@@ -1708,27 +1717,27 @@ log_posterior <- outer(beta0_values, beta1_values, Vectorize(function(b0, b1) {
 }))
 
 # Convert to probability scale
-posterior <- exp(log_posterior - max(log_posterior))  # Subtract max for numerical stability
 
 # Normalize the posterior
 posterior <- posterior / sum(posterior) # a vector of probabilities
 
-
+# now I am going to sample from the posterior, like above. 
 set.seed(1974)
-samples <- sample(seq_along(posterior), size = length(posterior), replace = TRUE, prob = posterior). # this gives you positions on the vector
+samples <- sample(seq_along(posterior), size = length(posterior), replace = TRUE, prob = posterior)# this gives you positions on the vector
 
-#now you need to translate the vector positions into something that can find the positions 
+#now I need to translate the vector positions into something that can find the positions 
 # on the specified beta0 and beta1 grid. 
 # what I came up with is the following
 # create the grid of the intercepts and slopes. 
 # the number of rows is the length of the vector
 array_to_find_values <- expand.grid(beta0_values, beta1_values)
 
-df_to_find_values <- data.frame(table(samples))
+df_to_find_values <- data.frame(table(samples)) # this tells me how many times each value appears, or rather each "position"
 
-row_nums <- as.numeric(as.character(df_to_find_values$samples))
+row_nums <- as.numeric(as.character(df_to_find_values$samples)) # easier to get them out of the dataframe.
 num_times <- as.numeric(as.character(df_to_find_values$Freq))
 
+# create a loop to allocate the positions to the values.
 sampled_intercepts <- list()
 sampled_slopes <- list()
 for(i in 1:nrow(df_to_find_values)){
@@ -1742,12 +1751,528 @@ for(i in 1:nrow(df_to_find_values)){
  sampled_slopes <- unlist( sampled_slopes)
 mean(sampled_intercepts)
  mean(sampled_slopes)
+ 
+# and this is another way.
 # sampled_beta0 <- beta0_values[(samples - 1) %% length(beta0_values) + 1]
 # sampled_beta1 <- beta1_values[(samples - 1) %/% length(beta0_values) + 1]
 
 
 
+```
 
+### Recapping the linear regression model in its more complete Bayesian specification.
+
+#### Specifying once again the Bayes model
+
+Here I specify the two things we need for the Bayes formula, namely the priors and the likelihood. It is a more complete picture than what I simulated out of convenience above.
+
+$$
+\begin{align*}
+\text{The prior for the intercept is:} \quad \beta_0 & \sim \mathcal{N}(170, 10^2) \\
+\text{The prior for the slope is:} \quad\beta_1 & \sim \mathcal{N}(0, 1^2) \\
+\text{The prior for the stdev is:} \quad\sigma & \sim \mathcal{N}(0, 10)  
+T[0,]\\
+\text{The likelihood is:} \quad y & \sim \mathcal{N}(\beta_0 + \beta_1 x, \sigma)
+\end{align*}
+$$
+
+Note that there are other good priors for the $\sigma$ , including an inverse gamma or an exponential, the key is to use a distribution that does not let it go below zero, which here I achieve through the truncated normal.
+
+Here is the Stan code again
+
+```{r}
+stan_code_slope <- "
+data {
+  int<lower=0> N;  // number of observations
+  vector[N] y;     // outcome variable
+  vector[N] x;     // predictor variable
+}
+parameters {
+  real beta_0;  // intercept
+  real beta_1;   // slope
+  real<lower=0> sigma;  // standard deviation, constrained to be positive
+}
+model {
+  beta_0 ~ normal(170, 10);  // weakly informative prior for the intercept
+  beta_1 ~ normal(0, 10);   // weakly informative prior for the slope
+  sigma ~ normal(0, 10) T[0,];  // weakly informative prior for the standard deviation, truncated to be positive
+  y ~ normal(beta_0 + beta_1 * x, sigma);  // likelihood
+}
+"
+
+# Tell Stan where to find the N and Y 
+  stan_data_slope <- list(
+  N = nrow(df_hse_wk7),
+  y = df_hse_wk7$Height,
+  x = df_hse_wk7$Weight
+)
+
+  # and fit the model in stan
+  fit_slope_stan_uncentered <- stan(
+  model_code = stan_code_slope, 
+  data = stan_data_slope,  
+  chains = 2,  
+  iter = 2000,  
+  warmup = 500,  
+  seed = 1974  
+)
+
+# Print summary of the model
+summary(fit_slope_stan_uncentered)
+```
+
+#### Centering the predictor
+
+As we discussed last time, the intercept becomes meaningless from a substantive point of view once the predictor is entered into the model. You can overcome this by centering the predictor, ie subtracting the mean from each one of its values. Now the intercept is thet value at the mean. Centering has another great advantage: it decorrelates intercept and slope, something which comes in very handy when you have complex models and colinearity is a threat.
+
+Please see in the code below the effects of centering on de-correlation.
+
+```{r}
+df_hse_wk7$Weight_centered <- df_hse_wk7$Weight - mean(df_hse_wk7$Weight)
+
+stan_code_slope <- "
+data {
+  int<lower=0> N;  // number of observations
+  vector[N] y;     // outcome variable
+  vector[N] x;     // predictor variable
+}
+parameters {
+  real beta_0;  // intercept
+  real beta_1;   // slope
+  real<lower=0> sigma;  // standard deviation, constrained to be positive
+}
+model {
+  beta_0 ~ normal(170, 10);  // weakly informative prior for the intercept
+  beta_1 ~ normal(0, 10);   // weakly informative prior for the slope
+  sigma ~ normal(0, 10) T[0,];  // weakly informative prior for the standard deviation, truncated to be positive
+  y ~ normal(beta_0 + beta_1 * x, sigma);  // likelihood
+}
+"
+
+# Tell Stan where to find the N and Y 
+  stan_data_slope <- list(
+  N = nrow(df_hse_wk7),
+  y = df_hse_wk7$Height,
+  x = df_hse_wk7$Weight_centered
+)
+
+  # and fit the model in stan
+  fit_slope_stan <- stan(
+  model_code = stan_code_slope, 
+  data = stan_data_slope,  
+  chains = 2,  
+  iter = 2000,  
+  warmup = 500,  
+  seed = 1974  
+)
+
+# Print summary of the model
+print(fit_slope_stan)
+```
+
+Notice the intercept now. Also, see the code chunk below where I demonstrate the decorrelation due to centering. The first step is to extract the posterior samples–**this is the all important step in all you do for inference too.**
+
+```{r}
+# extracting posterior samples
+posterior_samples_uncentered <- extract(fit_slope_stan_uncentered)
+posterior_samples <- extract(fit_slope_stan)
+cor(beta_0_samples, beta_1_samples)
+# getting beta_0 and beta_1 for the centred and uncentred
+beta_0_samples_uncentered <- posterior_samples_uncentered $beta_0
+beta_1_samples_uncentered  <- posterior_samples_uncentered $beta_1
+
+beta_0_samples <- posterior_samples$beta_0
+beta_1_samples <- posterior_samples$beta_1
+
+# correlation for the uncentered
+cor(beta_0_samples_uncentered, beta_1_samples_uncentered)
+cor(beta_0_samples, beta_1_samples)
+#### Notice the huge difference
+
+```
+
+#### Obtaining credible intervals for the coefficients in the Bayesian model
+
+How do you do inference on the coefficient? By sampling from the posterior. Here is how to do this and plot. Having extracted the posterior above, I can do some fun things.
+
+Note: Argyris to compare this to the frequentist inference that requires the standard error.
+
+```{r}
+
+
+# creidble intervals at 95%
+cred_int_beta_0 <- quantile(beta_0_samples, probs = c(0.025, 0.975)) 
+cred_int_beta_1 <- quantile(beta_1_samples, probs = c(0.025, 0.975))
+
+# Plot distribution for beta_0
+hist(beta_0_samples, breaks = 30, main = "Posterior distribution of beta_0", xlab = "beta_0", probability = TRUE)
+abline(v = cred_int_beta_0, col = "red")
+
+
+
+# Plot distribution for beta_1
+hist(beta_1_samples, breaks = 30, main = "Posterior distribution of beta_1", xlab = "beta_1", probability = TRUE)
+abline(v = cred_int_beta_1, col = "red", lwd = 2, lty = 2)
 
 
 ```
+
+#### A quick sanity check for the Bayesian regression model
+
+And here is a sanity check. We will do a lot more of these later when we delve into the Markov chains and MH sampling quite a bit more.
+
+```{r}
+plot(beta_0_samples, type = "l", main = "Trace plot for beta_0", ylab = "beta_0", xlab = "Iteration")
+
+# Plot chains for beta_1
+plot(beta_1_samples, type = "l", main = "Trace plot for beta_1", ylab = "beta_1", xlab = "Iteration")
+```
+
+### Interpretation of the outcome of the linear regression.
+
+How do you interpret the output of the regression model (assuming for the moment that it ran correctly!). Here are some question to help.
+
+-   is there a quick way to test whether your model is a good represetation of the dat.
+
+-   what are the units of the slope and what are those of the intercept. What are the units for your statement?
+
+-   What do the credible intervals above mean?
+
+-   How tall would you expect a person to be who is 90 kg of weight? How would you find that? Is this a prediction? How certain can you be about your finding?
+
+### Is this a good model? Simulating from the data.
+
+There are many ways to answer this question, including postulating some alternative model, e.g. a null. We will come to that. For the moment, how well does the model you generated compare to the observed data?
+
+To do this, I will run
+
+```{r}
+beta_0_samples <- posterior_samples$beta_0
+beta_1_samples <- posterior_samples$beta_1
+sigma_samples <- posterior_samples$sigma
+
+# for ease
+x <- df_hse_wk7$Weight_centered
+y <- df_hse_wk7$Height
+
+
+# Simulate new Heights
+set.seed(1974) 
+num_samples <- length(beta_0_samples)
+y_simulated <- matrix(NA, nrow = length(x), ncol = num_samples)
+
+for (i in 1:num_samples) {
+  y_simulated[, i] <- rnorm(length(x), mean = beta_0_samples[i] + beta_1_samples[i] * x, sd = sigma_samples[i]) ### please notice here the likelihood function!
+}
+
+# Calculate the mean and 95% credible intervals for the simulated y values
+y_simulated_mean <- apply(y_simulated, 1, mean)
+y_simulated_lower <- apply(y_simulated, 1, quantile, probs = 0.025)
+y_simulated_upper <- apply(y_simulated, 1, quantile, probs = 0.975)
+```
+
+```{r}
+# Plot the observed y values and the simulated y values with credible intervals
+plot(x, y, main = "Observed vs Simulated Heights", xlab = "x", ylab = "y", pch = 19, col = "blue")
+lines(x, y_simulated_mean, col = "red")
+lines(x, y_simulated_lower, col = "red")
+lines(x, y_simulated_upper, col = "red")
+
+# Add legend
+legend("topright", legend = c("Observed Heights", "Simulated Heights (mean)", "95% credible interval"), 
+       col = c("blue", "red", "red"), lwd = c(1, 2, 1), lty = c(NA, 1, 2), pch = c(19, NA, NA))
+
+```
+
+This actually looks very pretty, our simulation shows that we can largely recover the data.
+
+#### What are the units of the slope and what are those of the intercept. What are the units for your statement? 
+
+Well Height will be in cm, weight in kg, but what is the slope?
+
+#### How tall do you expect a person weighing 90kg to be? 
+
+There is a simple answer to this:
+
+```{r}
+Height_90_kg <- 143.061 + 0.322*90 # note I have used here the cefficients from the first model without centrering
+Height_90_kg 
+
+# if you want to do it with the centered data, do the following
+
+166.57 + 0.322*df_hse_wk7[df_hse_wk7$Weight==90,]$Weight_centered
+```
+
+But what would you say if I asked you how certain you are about this prediction?
+
+For this you will need a predictive interval. In the Bayesian context this is achieved by plugging in 90kg to the various slopes and intercepts that you have obtained from the posterior.
+
+```{r}
+# got 
+sigma_samples <- posterior_samples$sigma
+
+# Define the new x value
+weight_90 <-df_hse_wk7[df_hse_wk7$Weight==90,]$Weight_centered # see previous chunk
+
+
+
+# Calculate the predicted y values for the new x
+predicted_y <- beta_0_samples + beta_1_samples * weight_90
+
+# Add noise according to the posterior sigma for predictive distribution
+predicted_y_simulated <- rnorm(length(predicted_y), mean = predicted_y, sd = sigma_samples)
+
+# Calculate the predictive mean and 95% predictive interval
+predicted_mean <- mean(predicted_y_simulated)
+predicted_lower <- quantile(predicted_y_simulated, probs = 0.025)
+predicted_upper <- quantile(predicted_y_simulated, probs = 0.975)
+
+
+# Plot the predictive distribution
+hist(predicted_y_simulated, breaks = 30, main = paste("Predictive distribution for x =", new_x), xlab = "Predicted y", probability = TRUE)
+abline(v = predicted_lower, col = "red", lwd = 2, lty = 2)
+abline(v = predicted_upper, col = "red", lwd = 2, lty = 2)
+abline(v = predicted_mean, col = "blue", lwd = 2, lty = 1)
+legend("topright", legend = c("Predictive mean Height", "95% predictive interval"), col = c("blue", "red"), lwd = 2, lty = c(1, 2))
+```
+
+#### Let's try a different model: include a quadratic term
+
+Why not specify a model with a quadratic term included. You often have to do this, particularly when you model time processes. Let's see how to specify this in stan.
+
+```{r}
+
+df_hse_wk7$wt_sq <- df_hse_wk7$Weight^2
+df_hse_wk7$Weight_centered <- df_hse_wk7$Weight - mean(df_hse_wk7$Weight)
+  df_hse_wk7$wt_sq_centered <- df_hse_wk7$Weight_centered^2
+
+
+
+stan_code_slope_quad <- "
+data {
+  int<lower=0> N;  // number of observations
+  vector[N] Height;     // outcome 
+  vector[N] Weight_centered;     // predictor
+  vector[N] wt_sq_centered; // quadratic predictor 
+}
+
+parameters {
+  real beta_0;  // intercept
+  real beta_1;   // coef x
+  real beta_2; // coef x^2
+  real<lower=0> sigma;  // standard deviation, constrained to be positive
+}
+
+model {
+  beta_0 ~ normal(140, 10);  // weakly informative prior for the intercept
+  beta_1 ~ normal(0, 10);   // weakly informative prior for the slope
+  beta_2 ~ normal(0, 10); //
+  sigma ~ normal(0, 10) T[0,];  // weakly informative prior for the standard deviation, truncated to be positive
+  Height ~ normal(beta_0 + beta_1 * Weight_centered + beta_2*wt_sq_centered, sigma);  // likelihood
+}
+
+"
+stan_data_slope_quad <- list(
+  N = nrow(df_hse_wk7),
+  Height = df_hse_wk7$Height,
+  Weight_centered = df_hse_wk7$Weight_centered,
+  wt_sq_centered = df_hse_wk7$wt_sq_centered
+)
+
+
+  # and fit the model in stan
+  fit_slope_stan_quad <- stan(
+  model_code = stan_code_slope_quad, 
+  data = stan_data_slope_quad,  
+  chains = 2,  
+  iter = 2000,  
+  warmup = 500,  
+  seed = 1974  
+)
+
+# Print summary of the model
+print(fit_slope_stan_quad)
+
+# print lm
+summary(lm(Height ~ Weight_centered + wt_sq_centered, df_hse_wk7))
+```
+
+```{r}
+predicted_values <- 167.26 + 0.33*df_hse_wk7$Weight_centered + 0*df_hse_wk7$wt_sq_centered
+
+sorted_indices <- order(x)
+x_sorted <- x[sorted_indices]
+predicted_values_sorted <- predicted_values[sorted_indices]
+
+plot(x, y, main = "Model with quadratic term", xlab = "Centered Weight", ylab = "Height", pch = 19, col = "blue")
+lines(x_sorted, predicted_values_sorted, col = "red", lwd = 2)
+
+
+legend("topright", legend = c("Observed Heights", "Predicted Heights"), col = c("blue", "red"), pch = c(19, NA), lty = c(NA, 1), lwd = c(NA, 2))
+
+
+```
+
+#### Plot from the posterior 
+
+```{r}
+posterior_samples_q <- extract(fit_slope_stan_quad)
+
+# getting beta_0 and beta_1
+beta_0_samples_q <- posterior_samples_q$beta_0
+beta_1_samples_q <- posterior_samples_q$beta_1
+beta_2_samples_q <- posterior_samples_q$beta_2
+sigma_samples_q <- posterior_samples_q$sigma
+
+# creidble intervals at 95%
+cred_int_beta_0_q <- quantile(beta_0_samples_q, probs = c(0.025, 0.975)) 
+cred_int_beta_1_q <- quantile(beta_1_samples_q, probs = c(0.025, 0.975))
+cred_int_beta_2_q <- quantile(beta_1_samples_q, probs = c(0.025, 0.975))
+
+# Plot distribution for beta_0
+hist(beta_0_samples_q, breaks = 30, main = "Posterior distribution of beta_0", xlab = "beta_0", probability = TRUE)
+abline(v = cred_int_beta_0_q, col = "red")
+```
+
+```{r}
+plot(beta_0_samples_q, type = "l", main = "Trace plot for beta_0", ylab = "beta_0", xlab = "Iteration")
+
+# Plot chains for beta_1
+plot(beta_1_samples_q, type = "l", main = "Trace plot for beta_1", ylab = "beta_1", xlab = "Iteration")
+# Plot chains for beta_2
+plot(beta_2_samples_q, type = "l", main = "Trace plot for beta_2", ylab = "beta_2", xlab = "Iteration")
+```
+
+#### Simulate the quadratic model
+
+```{r}
+
+x_centered <- df_hse_wk7$Weight_centered # for ease--don't forget to use the centred values
+y <- df_hse_wk7$Height
+
+# Number of posterior samples
+num_samples_q <- length(beta_0_samples_q)
+
+# Initialize matrix to store simulated y values
+y_simulated_q <- matrix(NA, nrow = length(x_centered), ncol = num_samples_q)
+
+# Simulate y values from the posterior distribution
+for (i in 1:num_samples_q) {
+  y_simulated_q[, i] <- rnorm(length(x_centered), 
+                              mean = beta_0_samples_q[i] + beta_1_samples_q[i] * x_centered + beta_2_samples_q[i] * x_centered^2, 
+                              sd = sigma_samples_q[i])
+}
+
+# Calculate the mean and 95% credible intervals for the simulated y values
+y_simulated_mean_q <- apply(y_simulated_q, 1, mean)
+y_simulated_lower_q <- apply(y_simulated_q, 1, quantile, probs = 0.025)
+y_simulated_upper_q <- apply(y_simulated_q, 1, quantile, probs = 0.975)
+
+# Sort x values and corresponding simulated values for smooth plotting
+sorted_indices <- order(x_centered)
+x_sorted <- x_centered[sorted_indices]
+y_simulated_mean_sorted <- y_simulated_mean_q[sorted_indices]
+y_simulated_lower_sorted <- y_simulated_lower_q[sorted_indices]
+y_simulated_upper_sorted <- y_simulated_upper_q[sorted_indices]
+
+# Plot the observed y values and the simulated y values with credible intervals
+plot(x_centered, y, main = "Observed vs Simulated Heights (Quadratic Model)", 
+     xlab = "Centered Weight", ylab = "Height", pch = 19, col = "blue")
+lines(x_sorted, y_simulated_mean_sorted, col = "red", lwd = 2)
+lines(x_sorted, y_simulated_lower_sorted, col = "red", lty = 2)
+lines(x_sorted, y_simulated_upper_sorted, col = "red", lty = 2)
+
+# Add legend
+legend("topright", legend = c("Observed Heights", "Predicted Heights (mean)", "95% Credible Interval"), 
+       col = c("blue", "red", "red"), lwd = c(1, 2, 1), lty = c(NA, 1, 2), pch = c(19, NA, NA))
+
+```
+
+#### Compare the linear and the quadratic models
+
+We are going to use three main metrics for this purpose.
+
+First the **Mean Squared Error**. We encounted the sum of squared errors last week. This is simply the mean. Formally it is:
+
+$$
+\text{MSE} = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2
+$$
+
+remember the angular hat over the y in $\hat{y}$ is the predicted value.
+
+Second the Mean Absolute Error. Remember, last week we spoke about the possibility of using absolute rather than squared values. Here it is as a metric:
+
+$$
+\text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|
+$$
+
+The final one is the proportion of the variance, expressed as the $R^2$
+
+$$
+R^2 = 1 - \frac{\sum_{i=1}^{n} (y_i - \hat{y}_i)^2}{\sum_{i=1}^{n} (y_i - \bar{y})^2}
+$$
+
+where the straight hat over the y, $\bar{y}$ is called a bar and represents the mean and the denominator is the famous Total Sum of Squares, a key metric in anovas, for example. The numerator is well known to us already...
+
+Below I arite a function to estimate these seemlesly.
+
+```{r}
+
+compare_models <- function(y_observed, x_centered, posterior_samples, posterior_samples_q) {
+  
+  y_pred_linear <- apply(sapply(1:length(beta_0_samples), function(i) {
+    beta_0_samples[i] + beta_1_samples[i] * x_centered
+  }), 1, mean)
+  
+  # Predict y values for quadratic model
+  y_pred_quad <- apply(sapply(1:length(beta_0_samples_q), function(i) {
+    beta_0_samples_q[i] + beta_1_samples_q[i] * x_centered + beta_2_samples_q[i] * x_centered^2
+  }), 1, mean)
+  
+   # Calculate MSE
+  mse_linear <- mean((y_observed - y_pred_linear)^2)
+  mse_quad <- mean((y_observed - y_pred_quad)^2)
+  
+  # Calculate MAE
+  mae_linear <- mean(abs(y_observed - y_pred_linear))
+  mae_quad <- mean(abs(y_observed - y_pred_quad))
+  
+  # Calculate R-squared
+  ss_total <- sum((y_observed - mean(y_observed))^2)
+  ss_res_linear <- sum((y_observed - y_pred_linear)^2)
+  ss_res_quad <- sum((y_observed - y_pred_quad)^2)
+  
+  r_squared_linear <- 1 - (ss_res_linear / ss_total)
+  r_squared_quad <- 1 - (ss_res_quad / ss_total)
+  
+  # Create a comparison data frame
+  comparison <- data.frame(
+    Metric = c("MSE", "MAE", "R-squared"),
+    Linear_Model = c(mse_linear, mae_linear, r_squared_linear),
+    Quadratic_Model = c(mse_quad, mae_quad, r_squared_quad)
+  )
+  
+  return(comparison)
+}
+
+y <- df_hse_wk7$Height
+x_centered <- df_hse_wk7$Weight_centered
+
+# Compare models
+comparison_result <- compare_models(y, x_centered, posterior_samples, posterior_samples_q)
+
+# Print the comparison results
+print(comparison_result)
+```
+
+What do you think? Is any of the two better than the other? Have you heard of Occams razor?
+
+![](occam.jpeg)
+
+#### Exercise 8.1
+
+a\) Take the whole of the HSE sample, except for the data you have used already. It is simple to subset.
+
+b\) Use the linear and quadratic models from above to predict the new data in two ways: i) by constructing predictive values out of the standard equation for each; ii) by incorporating the uncertainty (of sampling and of the posterior) into it, as I have shown above for a single value.
+
+c\) Compare the the performance of the two models on the basis of the MSE, MAE and R-squared values.
