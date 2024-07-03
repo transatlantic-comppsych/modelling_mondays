@@ -1645,48 +1645,13 @@ print(paste(beta_1, beta_0))
 
 Last week we found the estimates for the intercept and slope by specifying the OLS model and by fitting thousands of curves using brute force. Here I am going to first show the
 
-### Using maximum likelihood to find the slope and intercept
+### Using maximum likelihood and Bayes to find the slope and intercept
 
-We can view this as a likelihood problem. The proper likelihood (see the explicit stan code above), here is based on a normal probability density function. I had fitted something like this above, in week 1, let's return to the function I had written.
-
-```{r}
-
-# The log-likelihood for different values of beta0 and beta1 REMIND ME TO TELL YOU ABOUT THE #PLAUSIBLE RANGE!
-beta0_values <- seq(130, 160, by = 1)  
-beta1_values <- seq(0, 1, by = 0.01)  
-log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
-                               Vectorize(function(b0, b1) stan_data_slope(b0, b1, df_hse_wk7$Weight  , df_hse_wk7$Height)))
-
-# The MLE for beta0 and beta1
-max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE)
-mle_beta0 <- beta0_values[max_indices[1]]
-mle_beta1 <- beta1_values[max_indices[2]]
-
-fig_likelihood <- plot_ly(x = beta0_values, y = beta1_values, z = log_likelihood_values, 
-               type = "surface", colorscale = "Blues") %>%
-  layout(scene = list(
-    xaxis = list(title = "Intercept (β0)", titlefont = list(size = 18, color = "black")),
-    yaxis = list(title = "Slope (β1)", titlefont = list(size = 18, color = "black")),
-    zaxis = list(title = "Log-Likelihood", titlefont = list(size = 18, color = "black")),
-    annotations = list(
-      list(x = 145, y = 0.5, z = max(log_likelihood_values), text = "Optimal Point", 
-           showarrow = TRUE, arrowhead = 2, ax = 20, ay = -40)
-    )
-  ))
-
-# Show the plot
-fig_likelihood
-```
-
-Lo and behold! Using the likelihood function that we had developed in Week 1, also approximates the intercept and slope
-
-### The linear regression model as a Bayes model estimated through grid approximation.
-
-We have run the Bayesian model in Stan and in brms above. We will discuss their specification further down. For the time being, let's fit the model in a simple way "by hand" that is without the help of a specialised package. This is to get a fee of what is going on under the hub.
-
-As you will have guessed, we use the likelihood function that we have developed and used above. And, in this Bayesian framework we also use two priors, one for the intercept and one for the slope.
+We can view this as a likelihood problem. The proper likelihood (see the explicit stan code above), here is based on a normal probability density function. I had fitted something like this above, in week 1, let's return to the function I had written. Below you will find extensively commented code for how to find the likelihood and the posterior in Bayes
 
 ```{r}
+
+# this is the simple likelihood function, the one we have created above. 
 likelihood_linear_regression <- function(beta0, beta1, x, y) { # the likelihood as above
   mu <- beta0 + beta1 * x  # predicted values
   log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  
@@ -1699,66 +1664,66 @@ prior_beta0 <- function(beta0) { # specifying the prior for the intercept here
 }
 
 prior_beta1 <- function(beta1) { # and for the slope
-  dnorm(beta1, mean = 0.5, sd = 0.1, log = TRUE)
+  dnorm(beta1, mean = 100, sd = 500, log = TRUE)
 }
 
+# here I am specifying values for the intercept and slope. This is my PARAMETER space
+# the THETAS for the P(theta|y) from our first less
+beta0_values <- seq(130, 170, by = 0.5) # the range for the intercept and slope, i.e. my parameter space. I have kept it intentionally very narrow
+beta1_values <- seq(0.1, 0.4, by = 0.005) # kept this very narrow too to make things easier to see
 
-beta0_values <- seq(130, 160, by = 1) # the range for the intercept and slope, i.e. my parameter space
-beta1_values <- seq(0, 1, by = 0.01)
+# here all I do is create a grid to accommodate all the unique combinations of intercept and slope. 
+grid_of_coefs <- expand.grid(beta0_values, beta1_values)
+colnames(grid_of_coefs) <- c("beta0_values", "beta1_values")
 
-# Calculate the log-posterior ## see in week 1 the addednum about how to understand Vectorize if this is confusing. It can be for me and had to look up.
 
-log_posterior <- outer(beta0_values, beta1_values, Vectorize(function(b0, b1) {
-  log_likelihood <- likelihood_linear_regression(b0, b1, df_hse_wk7$Weight, df_hse_wk7$Height)
-  log_prior_beta0 <- prior_beta0(b0)
-  log_prior_beta1 <- prior_beta1(b1)
-  log_posterior <- log_likelihood + log_prior_beta0 + log_prior_beta1
-  return(log_posterior)
-}))
+# now here is a loop to iterate the above function over the range of parameter combos in the grid
+log_likelihood <- 0
 
-# Convert to probability scale
+for(i in 1: nrow(grid_of_coefs)){
+log_likelihood[i] <- likelihood_linear_regression(grid_of_coefs[i,1], 
+                                                  grid_of_coefs[i,2], 
+                                                  df_hse_wk7$Weight, df_hse_wk7$Height)
 
-# Normalize the posterior
-posterior <- posterior / sum(posterior) # a vector of probabilities
-
-# now I am going to sample from the posterior, like above. 
-set.seed(1974)
-samples <- sample(seq_along(posterior), size = length(posterior), replace = TRUE, prob = posterior)# this gives you positions on the vector
-
-#now I need to translate the vector positions into something that can find the positions 
-# on the specified beta0 and beta1 grid. 
-# what I came up with is the following
-# create the grid of the intercepts and slopes. 
-# the number of rows is the length of the vector
-array_to_find_values <- expand.grid(beta0_values, beta1_values)
-
-df_to_find_values <- data.frame(table(samples)) # this tells me how many times each value appears, or rather each "position"
-
-row_nums <- as.numeric(as.character(df_to_find_values$samples)) # easier to get them out of the dataframe.
-num_times <- as.numeric(as.character(df_to_find_values$Freq))
-
-# create a loop to allocate the positions to the values.
-sampled_intercepts <- list()
-sampled_slopes <- list()
-for(i in 1:nrow(df_to_find_values)){
-  
- sampled_intercepts[[i]] <- rep(expanded[row_nums,1], num_times)
- sampled_slopes[[i]] <- rep(expanded[row_nums,2], num_times)
-  
 }
 
- sampled_intercepts <- unlist( sampled_intercepts)
- sampled_slopes <- unlist( sampled_slopes)
-mean(sampled_intercepts)
- mean(sampled_slopes)
- 
-# and this is another way.
-# sampled_beta0 <- beta0_values[(samples - 1) %% length(beta0_values) + 1]
-# sampled_beta1 <- beta1_values[(samples - 1) %/% length(beta0_values) + 1]
+# attach the likelihood to the grid for ease
+grid_of_coefs$log_likelihood <- log_likelihood
+
+likelihood_solution <- grid_of_coefs[which.max(grid_of_coefs$log_likelihood),]# this tells you in which position of the grid you will find the max likelihood and gives you the row with the coefficients. 
+
+###### You have just found the maximum likelihood!!!!!!!!
 
 
 
+###If all this makes sense, then let's go to ****Bayes*****.
+## all we have to do is to add the posteriors. 
+
+
+# here you multiply with the priors--see the function I have created above to construc the priors
+grid_of_coefs$log_posterior <- grid_of_coefs$log_likelihood + prior_beta0(beta0_values) + prior_beta1(beta1_values)
+
+
+
+# now I need to do a trick to stablise the numbers here. Not to worry
+max_log_posterior <- max(grid_of_coefs$log_posterior) # these two steps prevent numerical underflow. Try them also without
+grid_of_coefs$stabilised_log_posterior <- grid_of_coefs$log_posterior - max_log_posterior
+
+# the posterior is the exponent of the log posterior
+grid_of_coefs$posterior <- exp(grid_of_coefs$stabilised_log_posterior)
+
+# and here I simply normalise, remember likelihood*prior/sum(likelihood*prior)
+grid_of_coefs$posterior <- grid_of_coefs$posterior/sum(grid_of_coefs$posterior)
+
+# now does my Bayes posterior seem plausible
+Bayes_solution <- grid_of_coefs[which.max(grid_of_coefs$posterior),]
+
+
+print(likelihood_solution) 
+print(Bayes_solution)
 ```
+
+Lo and behold! Using the likelihood function that we had developed in Week 1, also approximates the intercept and slope and so does Bayes
 
 ### Recapping the linear regression model in its more complete Bayesian specification.
 
@@ -2097,23 +2062,7 @@ print(fit_slope_stan_quad)
 summary(lm(Height ~ Weight_centered + wt_sq_centered, df_hse_wk7))
 ```
 
-```{r}
-predicted_values <- 167.26 + 0.33*df_hse_wk7$Weight_centered + 0*df_hse_wk7$wt_sq_centered
-
-sorted_indices <- order(x)
-x_sorted <- x[sorted_indices]
-predicted_values_sorted <- predicted_values[sorted_indices]
-
-plot(x, y, main = "Model with quadratic term", xlab = "Centered Weight", ylab = "Height", pch = 19, col = "blue")
-lines(x_sorted, predicted_values_sorted, col = "red", lwd = 2)
-
-
-legend("topright", legend = c("Observed Heights", "Predicted Heights"), col = c("blue", "red"), pch = c(19, NA), lty = c(NA, 1), lwd = c(NA, 2))
-
-
-```
-
-#### Plot from the posterior 
+#### Plot from the posterior for the quadratic
 
 ```{r}
 posterior_samples_q <- extract(fit_slope_stan_quad)
@@ -2134,16 +2083,20 @@ hist(beta_0_samples_q, breaks = 30, main = "Posterior distribution of beta_0", x
 abline(v = cred_int_beta_0_q, col = "red")
 ```
 
+This is now a rough check that the model ran ok.
+
 ```{r}
 plot(beta_0_samples_q, type = "l", main = "Trace plot for beta_0", ylab = "beta_0", xlab = "Iteration")
 
-# Plot chains for beta_1
+# chains for beta_1
 plot(beta_1_samples_q, type = "l", main = "Trace plot for beta_1", ylab = "beta_1", xlab = "Iteration")
-# Plot chains for beta_2
+# chains for beta_2
 plot(beta_2_samples_q, type = "l", main = "Trace plot for beta_2", ylab = "beta_2", xlab = "Iteration")
 ```
 
 #### Simulate the quadratic model
+
+This is what we did above for the linear model. It is not too bad as you can see. Note the curvature.
 
 ```{r}
 
@@ -2153,36 +2106,35 @@ y <- df_hse_wk7$Height
 # Number of posterior samples
 num_samples_q <- length(beta_0_samples_q)
 
-# Initialize matrix to store simulated y values
+# create a matrix to store simulated y values
 y_simulated_q <- matrix(NA, nrow = length(x_centered), ncol = num_samples_q)
 
-# Simulate y values from the posterior distribution
+# Simulate y values from the posterior 
 for (i in 1:num_samples_q) {
   y_simulated_q[, i] <- rnorm(length(x_centered), 
                               mean = beta_0_samples_q[i] + beta_1_samples_q[i] * x_centered + beta_2_samples_q[i] * x_centered^2, 
                               sd = sigma_samples_q[i])
 }
 
-# Calculate the mean and 95% credible intervals for the simulated y values
+# extract mean and 95% credible intervals for the simulated y values
 y_simulated_mean_q <- apply(y_simulated_q, 1, mean)
 y_simulated_lower_q <- apply(y_simulated_q, 1, quantile, probs = 0.025)
 y_simulated_upper_q <- apply(y_simulated_q, 1, quantile, probs = 0.975)
 
-# Sort x values and corresponding simulated values for smooth plotting
+# better to sort x values and corresponding simulated values for smooth plotting
 sorted_indices <- order(x_centered)
 x_sorted <- x_centered[sorted_indices]
 y_simulated_mean_sorted <- y_simulated_mean_q[sorted_indices]
 y_simulated_lower_sorted <- y_simulated_lower_q[sorted_indices]
 y_simulated_upper_sorted <- y_simulated_upper_q[sorted_indices]
 
-# Plot the observed y values and the simulated y values with credible intervals
+# osberved y values and the simulated y values with credible intervals
 plot(x_centered, y, main = "Observed vs Simulated Heights (Quadratic Model)", 
      xlab = "Centered Weight", ylab = "Height", pch = 19, col = "blue")
 lines(x_sorted, y_simulated_mean_sorted, col = "red", lwd = 2)
 lines(x_sorted, y_simulated_lower_sorted, col = "red", lty = 2)
 lines(x_sorted, y_simulated_upper_sorted, col = "red", lty = 2)
 
-# Add legend
 legend("topright", legend = c("Observed Heights", "Predicted Heights (mean)", "95% Credible Interval"), 
        col = c("blue", "red", "red"), lwd = c(1, 2, 1), lty = c(NA, 1, 2), pch = c(19, NA, NA))
 
@@ -2229,15 +2181,15 @@ compare_models <- function(y_observed, x_centered, posterior_samples, posterior_
     beta_0_samples_q[i] + beta_1_samples_q[i] * x_centered + beta_2_samples_q[i] * x_centered^2
   }), 1, mean)
   
-   # Calculate MSE
+   # MSE
   mse_linear <- mean((y_observed - y_pred_linear)^2)
   mse_quad <- mean((y_observed - y_pred_quad)^2)
   
-  # Calculate MAE
+  # MAE
   mae_linear <- mean(abs(y_observed - y_pred_linear))
   mae_quad <- mean(abs(y_observed - y_pred_quad))
   
-  # Calculate R-squared
+  # R-squared
   ss_total <- sum((y_observed - mean(y_observed))^2)
   ss_res_linear <- sum((y_observed - y_pred_linear)^2)
   ss_res_quad <- sum((y_observed - y_pred_quad)^2)
@@ -2261,7 +2213,7 @@ x_centered <- df_hse_wk7$Weight_centered
 # Compare models
 comparison_result <- compare_models(y, x_centered, posterior_samples, posterior_samples_q)
 
-# Print the comparison results
+
 print(comparison_result)
 ```
 
@@ -2276,3 +2228,193 @@ a\) Take the whole of the HSE sample, except for the data you have used already.
 b\) Use the linear and quadratic models from above to predict the new data in two ways: i) by constructing predictive values out of the standard equation for each; ii) by incorporating the uncertainty (of sampling and of the posterior) into it, as I have shown above for a single value.
 
 c\) Compare the the performance of the two models on the basis of the MSE, MAE and R-squared values.
+
+```{r}
+
+# this is the simple likelihood function, the one we have created above. 
+likelihood_linear_regression <- function(beta0, beta1, x, y) { # the likelihood as above
+  mu <- beta0 + beta1 * x  # predicted values
+  log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  
+  return(log_likelihood)
+}
+
+
+prior_beta0 <- function(beta0) { # specifying the prior for the intercept here
+  dnorm(beta0, mean = 170, sd = 10, log = TRUE)
+}
+
+prior_beta1 <- function(beta1) { # and for the slope
+  dnorm(beta1, mean = 100, sd = 500, log = TRUE)
+}
+
+# here I am specifying values for the intercept and slope. This is my PARAMETER space
+# the THETAS for the P(theta|y) from our first less
+beta0_values <- seq(130, 170, by = 0.5) # the range for the intercept and slope, i.e. my parameter space. I have kept it intentionally very narrow
+beta1_values <- seq(0.1, 0.4, by = 0.005) # kept this very narrow too to make things easier to see
+
+# here all I do is create a grid to accommodate all the unique combinations of intercept and slope. 
+grid_of_coefs <- expand.grid(beta0_values, beta1_values)
+colnames(grid_of_coefs) <- c("beta0_values", "beta1_values")
+
+
+# now here is a loop to iterate the above function over the range of parameter combos in the grid
+log_likelihood <- 0
+
+for(i in 1: nrow(grid_of_coefs)){
+log_likelihood[i] <- likelihood_linear_regression(grid_of_coefs[i,1], 
+                                                  grid_of_coefs[i,2], 
+                                                  df_hse_wk7$Weight, df_hse_wk7$Height)
+
+}
+
+# attach the likelihood to the grid for ease
+grid_of_coefs$log_likelihood <- log_likelihood
+
+likelihood_solution <- grid_of_coefs[which.max(grid_of_coefs$log_likelihood),]# this tells you in which position of the grid you will find the max likelihood and gives you the row with the coefficients. 
+
+# You have just found the maximum likelihood. 
+
+
+
+###If all this makes sense, then let's go to Bayes.
+## all we have to do is to add the posteriors. 
+
+
+# here you multiply with the priors--see the function I have created above to construc the priors
+grid_of_coefs$log_posterior <- grid_of_coefs$log_likelihood + prior_beta0(beta0_values) + prior_beta1(beta1_values)
+
+
+
+# now I need to do a trick to stablise the numbers here. Not to worry
+max_log_posterior <- max(grid_of_coefs$log_posterior) # these two steps prevent numerical underflow. Try them also without
+grid_of_coefs$stabilised_log_posterior <- grid_of_coefs$log_posterior - max_log_posterior
+
+# the posterior is the exponent of the log posterior
+grid_of_coefs$posterior <- exp(grid_of_coefs$stabilised_log_posterior)
+
+# and here I simply normalise, remember likelihood*prior/sum(likelihood*prior)
+grid_of_coefs$posterior <- grid_of_coefs$posterior/sum(grid_of_coefs$posterior)
+
+# now does my Bayes posterior seem plausible
+Bayes_solution <- grid_of_coefs[which.max(grid_of_coefs$posterior),]
+
+
+print(likelihood_solution) 
+print(Bayes_solution)
+
+
+```
+
+\################### FoR THE MOMENT IRRELEVANT CODE\
+
+```{r{r}
+
+# The log-likelihood for different values of beta0 and beta1 REMIND ME TO TELL YOU ABOUT THE #PLAUSIBLE RANGE!
+beta0_values <- seq(130, 160, by = 1)  
+beta1_values <- seq(0, 1, by = 0.01)  
+log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
+                               Vectorize(function(b0, b1) stan_data_slope(b0, b1, df_hse_wk7$Weight  , df_hse_wk7$Height)))
+
+# The MLE for beta0 and beta1
+max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE)
+mle_beta0 <- beta0_values[max_indices[1]]
+mle_beta1 <- beta1_values[max_indices[2]]
+
+fig_likelihood <- plot_ly(x = beta0_values, y = beta1_values, z = log_likelihood_values, 
+               type = "surface", colorscale = "Blues") %>%
+  layout(scene = list(
+    xaxis = list(title = "Intercept (β0)", titlefont = list(size = 18, color = "black")),
+    yaxis = list(title = "Slope (β1)", titlefont = list(size = 18, color = "black")),
+    zaxis = list(title = "Log-Likelihood", titlefont = list(size = 18, color = "black")),
+    annotations = list(
+      list(x = 145, y = 0.5, z = max(log_likelihood_values), text = "Optimal Point", 
+           showarrow = TRUE, arrowhead = 2, ax = 20, ay = -40)
+    )
+  ))
+
+# Show the plot
+fig_likelihood
+
+```
+
+### The linear regression model as a Bayes model estimated through grid approximation.
+
+We have run the Bayesian model in Stan and in brms above. We will discuss their specification further down. For the time being, let's fit the model in a simple way "by hand" that is without the help of a specialised package. This is to get a fee of what is going on under the hub.
+
+As you will have guessed, we use the likelihood function that we have developed and used above. And, in this Bayesian framework we also use two priors, one for the intercept and one for the slope.
+
+```{r}
+likelihood_linear_regression <- function(beta0, beta1, x, y) { # the likelihood as above
+  mu <- beta0 + beta1 * x  # predicted values
+  log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  
+  return(log_likelihood)
+}
+
+
+prior_beta0 <- function(beta0) { # specifying the prior for the intercept here
+  dnorm(beta0, mean = 170, sd = 10, log = TRUE)
+}
+
+prior_beta1 <- function(beta1) { # and for the slope
+  dnorm(beta1, mean = 0.5, sd = 0.1, log = TRUE)
+}
+
+
+beta0_values <- seq(130, 160, by = 1) # the range for the intercept and slope, i.e. my parameter space
+beta1_values <- seq(0, 1, by = 0.01)
+
+# Calculate the log-posterior ## see in week 1 the addednum about how to understand Vectorize if this is confusing. It can be for me and had to look up.
+
+log_posterior <- outer(beta0_values, beta1_values, Vectorize(function(b0, b1) {
+  log_likelihood <- likelihood_linear_regression(b0, b1, df_hse_wk7$Weight, df_hse_wk7$Height)
+  log_prior_beta0 <- prior_beta0(b0)
+  log_prior_beta1 <- prior_beta1(b1)
+  log_posterior <- log_likelihood + log_prior_beta0 + log_prior_beta1
+  return(log_posterior)
+}))
+
+# Convert to probability scale
+
+# Normalize the posterior
+posterior <- posterior / sum(posterior) # a vector of probabilities
+
+# now I am going to sample from the posterior, like above. 
+set.seed(1974)
+samples <- sample(seq_along(posterior), size = length(posterior), replace = TRUE, prob = posterior)# this gives you positions on the vector
+
+#now I need to translate the vector positions into something that can find the positions 
+# on the specified beta0 and beta1 grid. 
+# what I came up with is the following
+# create the grid of the intercepts and slopes. 
+# the number of rows is the length of the vector
+array_to_find_values <- expand.grid(beta0_values, beta1_values)
+
+df_to_find_values <- data.frame(table(samples)) # this tells me how many times each value appears, or rather each "position"
+
+row_nums <- as.numeric(as.character(df_to_find_values$samples)) # easier to get them out of the dataframe.
+num_times <- as.numeric(as.character(df_to_find_values$Freq))
+
+# create a loop to allocate the positions to the values.
+sampled_intercepts <- list()
+sampled_slopes <- list()
+for(i in 1:nrow(df_to_find_values)){
+  
+ sampled_intercepts[[i]] <- rep(expanded[row_nums,1], num_times)
+ sampled_slopes[[i]] <- rep(expanded[row_nums,2], num_times)
+  
+}
+
+ sampled_intercepts <- unlist( sampled_intercepts)
+ sampled_slopes <- unlist( sampled_slopes)
+mean(sampled_intercepts)
+ mean(sampled_slopes)
+ 
+# and this is another way.
+ sampled_beta0 <- beta0_values[(samples - 1) %% length(beta0_values) + 1]
+ sampled_beta1 <- beta1_values[(samples - 1) %/% length(beta0_values) + 1]
+
+
+
+```
+
+### 
