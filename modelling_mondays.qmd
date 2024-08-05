@@ -2305,7 +2305,99 @@ print(Bayes_solution)
 
 ```
 
-\################### FoR THE MOMENT IRRELEVANT CODE\
+## Week 9: Logistic Regression
+
+Now imagine that instead of wanting to predict hiegh, you wanted to predic instead whether someone will be "tall" or not. 
+We will define "tall" in the HSE dataset to be anything that is above the median height--see code chunk below.
+
+
+```{r}
+df_hse_wk7$Height_dich <- ifelse (df_hse_wk7$Height <median(df_hse_wk7$Height) , 0, 1)
+
+df_hse_wk7$Height_dich <- factor(df_hse_wk7$Height_dich, 
+levels = c(0,1), 
+labels = c("not_tall", "tall"))
+```
+
+As you recall, we had fitted an OLS model to predict the Height from Weight. THe model had the form:
+
+$$y_i = \beta_0 + \beta_1.xi + error$$
+What is different now is that $y_i$ is no longer a "continuous" quantity, it is binary, in this case 0 or 1, "not tall" vs "tall"
+
+In order to decide how to handle this situation, let's remind ourselves of the graph of height and weight.
+
+```{r}
+plot(df_hse_wk7$Weight, df_hse_wk7$Height, pch = 19, col = 'blue', 
+     xlab = "Weight", ylab = "Height",
+     main = "Heights vs Weights and a regression prediction")
+abline(lm(Height ~ Weight, data = df_hse_wk7), col = "black")
+```
+
+Now what happens if we have a binary outcome?
+
+```{r}
+plot(df_hse_wk7$Weight, df_hse_wk7$Height_dich, pch = 19, col = 'blue', 
+     xlab = "Weight", ylab = "Height",
+     main = "Tallness and Weight")
+
+```
+
+
+Our task is to answer the question: how likely is a person of weight = X to be "tall"?
+This is a probability question and probabilities are constrained between 0 and 1 or 0% and 100%. 
+The question is then, how do we turn a predictive model into one that uses probabilities? 
+
+Enter the logistic function, a wonderous device that can squeeze any real value within a predefined range.
+
+
+$$\sigma(t) = \frac{1}{1 + \exp(-a \cdot t)}$$
+
+```{r}
+t <- -10:10 # the x variable equivalent
+a <- 1 # a slope coefficient
+probs <- 1/(1 + exp(-a*t)) # the logistic function
+plot(probs)
+```
+### Exercise 9.1 
+Play around with the code chunk above. 
+a) vary the slope coefficient.
+
+```{r}
+t <- -10:10 # the x variable equivalent
+a <- seq(0.1, 3, by = 0.5) # a slope coefficient
+probs <- list() 
+for(i in 1:length(a)){
+  
+  probs[[i]] <- 1/(1 + exp(-a[i]*t)) # the logistic function
+  plot(probs[[i]])
+  
+}
+
+
+```
+
+b) vary the maximum range, or carrying capacity.
+```{r}
+t <- -10:10 # the x variable equivalent
+a <- 1 # a slope coefficient
+numerator <- 1:10
+probs <- list()
+for(i in 1: length(numerator)){
+probs[[i]] <- numerator[i]/(1 + exp(-a*t)) # the logistic function
+plot(probs[[i]])
+}
+```
+
+
+We can therefore use the logistic function to run our regression. All we have to do to obtain probabilities for each value of x is the following:
+
+
+$$ P(x) = \frac{1}{1 + \exp(-(\beta_0 + \beta_1 \cdot x)}$$
+
+Now you will ask two important questions, of course. The first one is: where does the logistic function even come from? The second is, what am I supposed to do with this?
+
+
+################### FoR THE MOMENT IRRELEVANT CODE
 
 ```{r{r}
 
@@ -2417,4 +2509,5 @@ mean(sampled_intercepts)
 
 ```
 
-### 
+
+
