@@ -2327,17 +2327,25 @@ In order to decide how to handle this situation, let's remind ourselves of the g
 plot(df_hse_wk7$Weight, df_hse_wk7$Height, pch = 19, col = 'blue', 
      xlab = "Weight", ylab = "Height",
      main = "Heights vs Weights and a regression prediction")
-abline(lm(Height ~ Weight, data = df_hse_wk7), col = "black")
+abline(lm(Height ~ Weight, data = df_hse_wk7), col = "red")
 ```
 
 Now what happens if we have a binary outcome?
 
 ```{r}
 plot(df_hse_wk7$Weight, df_hse_wk7$Height_dich, pch = 19, col = 'blue', 
-     xlab = "Weight", ylab = "Height",
+     xlab = "Weight", ylab = "Tallness",
      main = "Tallness and Weight")
 
 ```
+
+For the moment, let's run the logistic regression
+
+```{r}
+glm(Height_dich ~ Weight, data = df_hse_wk7, family = binomial)
+```
+
+But what does this mean? We need to understand this below! We will then return to this model.
 
 Our task is to answer the question: how likely is a person of weight = X to be "tall"? This is a probability question and probabilities are constrained between 0 and 1 or 0% and 100%. The question is then, how do we turn a predictive model into one that uses probabilities?
 
@@ -2460,6 +2468,31 @@ $$
 In other words, the exponentiated coefficient $\beta_1$ in the regression model can be interpreted as an odds ratio of the increase (or decrease) by a unit change in the continuous predictor variable.
 
 There is also the geometric interepretation due to Agresti, which I will show you in the lesson.
+
+```{r}
+
+fit_logistic <- glm(Height_dich ~ Weight, data = df_hse_wk7, family = binomial)
+summary(fit_logistic)
+df_hse_wk7$log_odds <- predict(fit_logistic)
+df_hse_wk7$odds <- exp(df_hse_wk7$log_odds)
+df_hse_wk7$probabilities <- predict(fit_logistic, type = "response")
+
+```
+
+```{r}
+plot(df_hse_wk7$Weight, df_hse_wk7$Height_dich, pch = 19, col = 'blue', 
+     xlab = "Weight", ylab = "Height (0 = Short, 1 = Tall)",
+     main = "Tallness and Weight")
+
+
+sorted_indices <- order(df_hse_wk7$Weight)
+sorted_weights <- df_hse_wk7$Weight[sorted_indices]
+sorted_probabilities <- df_hse_wk7$probabilities[sorted_indices]
+
+
+lines(sorted_weights, sorted_probabilities, col = "red", lwd = 2)
+
+```
 
 <!-- ################### FoR THE MOMENT IRRELEVANT CODE -->
 
