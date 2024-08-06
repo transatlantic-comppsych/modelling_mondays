@@ -1951,11 +1951,11 @@ legend("topright", legend = c("Observed Heights", "Simulated Heights (mean)", "9
 
 This actually looks very pretty, our simulation shows that we can largely recover the data.
 
-#### What are the units of the slope and what are those of the intercept. What are the units for your statement? 
+#### What are the units of the slope and what are those of the intercept. What are the units for your statement?
 
 Well Height will be in cm, weight in kg, but what is the slope?
 
-#### How tall do you expect a person weighing 90kg to be? 
+#### How tall do you expect a person weighing 90kg to be?
 
 There is a simple answer to this:
 
@@ -2307,9 +2307,7 @@ print(Bayes_solution)
 
 ## Week 9: Logistic Regression
 
-Now imagine that instead of wanting to predict hiegh, you wanted to predic instead whether someone will be "tall" or not. 
-We will define "tall" in the HSE dataset to be anything that is above the median height--see code chunk below.
-
+Now imagine that instead of wanting to predict hiegh, you wanted to predic instead whether someone will be "tall" or not. We will define "tall" in the HSE dataset to be anything that is above the median height--see code chunk below.
 
 ```{r}
 df_hse_wk7$Height_dich <- ifelse (df_hse_wk7$Height <median(df_hse_wk7$Height) , 0, 1)
@@ -2321,8 +2319,7 @@ labels = c("not_tall", "tall"))
 
 As you recall, we had fitted an OLS model to predict the Height from Weight. THe model had the form:
 
-$$y_i = \beta_0 + \beta_1.xi + error$$
-What is different now is that $y_i$ is no longer a "continuous" quantity, it is binary, in this case 0 or 1, "not tall" vs "tall"
+$$y_i = \beta_0 + \beta_1.xi + error$$ What is different now is that $y_i$ is no longer a "continuous" quantity, it is binary, in this case 0 or 1, "not tall" vs "tall"
 
 In order to decide how to handle this situation, let's remind ourselves of the graph of height and weight.
 
@@ -2342,13 +2339,9 @@ plot(df_hse_wk7$Weight, df_hse_wk7$Height_dich, pch = 19, col = 'blue',
 
 ```
 
-
-Our task is to answer the question: how likely is a person of weight = X to be "tall"?
-This is a probability question and probabilities are constrained between 0 and 1 or 0% and 100%. 
-The question is then, how do we turn a predictive model into one that uses probabilities? 
+Our task is to answer the question: how likely is a person of weight = X to be "tall"? This is a probability question and probabilities are constrained between 0 and 1 or 0% and 100%. The question is then, how do we turn a predictive model into one that uses probabilities?
 
 Enter the logistic function, a wonderous device that can squeeze any real value within a predefined range.
-
 
 $$\sigma(t) = \frac{1}{1 + \exp(-a \cdot t)}$$
 
@@ -2358,9 +2351,10 @@ a <- 1 # a slope coefficient
 probs <- 1/(1 + exp(-a*t)) # the logistic function
 plot(probs)
 ```
-### Exercise 9.1 
-Play around with the code chunk above. 
-a) vary the slope coefficient.
+
+### Exercise 9.1
+
+Play around with the code chunk above. a) vary the slope coefficient.
 
 ```{r}
 t <- -10:10 # the x variable equivalent
@@ -2376,7 +2370,8 @@ for(i in 1:length(a)){
 
 ```
 
-b) vary the maximum range, or carrying capacity.
+b)  vary the maximum range, or carrying capacity.
+
 ```{r}
 t <- -10:10 # the x variable equivalent
 a <- 1 # a slope coefficient
@@ -2388,126 +2383,240 @@ plot(probs[[i]])
 }
 ```
 
-
 We can therefore use the logistic function to run our regression. All we have to do to obtain probabilities for each value of x is the following:
-
 
 $$ P(x) = \frac{1}{1 + \exp(-(\beta_0 + \beta_1 \cdot x)}$$
 
 Now you will ask two important questions, of course. The first one is: where does the logistic function even come from? The second is, what am I supposed to do with this?
 
+### Population Growth and the logistic equation
 
-################### FoR THE MOMENT IRRELEVANT CODE
+The logistic is a form of sigmoid equations. Many real-life phenomena are best described using logistic euqtions, including the catlytic activity of enzymes. Population growth is arguably the most famous such area. In the 18th century people started becoming pre-occupied with scarce resources and their allocation. It was Thomas Robert Malthus who wrote his famous Essay on the Principle of Population. He wrote that:
 
-```{r{r}
+*Through the animal and vegetable kingdoms, nature has scattered the seeds of life abroad with the most profuse and liberal hand. ... The germs of existence contained in this spot of earth, with ample food, and ample room to expand in, would fill millions of worlds in the course of a few thousand years. Necessity, that imperious all pervading law of nature, restrains them within the prescribed bounds. The race of plants, and the race of animals shrink under this great restrictive law. And the race of man cannot, by any efforts of reason, escape from it. Among plants and animals its effects are waste of seed, sickness, and premature death. Among mankind, misery and vice.*
 
-# The log-likelihood for different values of beta0 and beta1 REMIND ME TO TELL YOU ABOUT THE #PLAUSIBLE RANGE!
-beta0_values <- seq(130, 160, by = 1)  
-beta1_values <- seq(0, 1, by = 0.01)  
-log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function
-                               Vectorize(function(b0, b1) stan_data_slope(b0, b1, df_hse_wk7$Weight  , df_hse_wk7$Height)))
+This seems to suggest that populations can grow when there is plenty but at some point population growth exceeds the capacity of production of goods and that's when the miserable bound is reached.
 
-# The MLE for beta0 and beta1
-max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE)
-mle_beta0 <- beta0_values[max_indices[1]]
-mle_beta1 <- beta1_values[max_indices[2]]
+Mathematically, it seems that he only half formulated his idea as the formalisms that came out of his writings was the exponential growth:
 
-fig_likelihood <- plot_ly(x = beta0_values, y = beta1_values, z = log_likelihood_values, 
-               type = "surface", colorscale = "Blues") %>%
-  layout(scene = list(
-    xaxis = list(title = "Intercept (β0)", titlefont = list(size = 18, color = "black")),
-    yaxis = list(title = "Slope (β1)", titlefont = list(size = 18, color = "black")),
-    zaxis = list(title = "Log-Likelihood", titlefont = list(size = 18, color = "black")),
-    annotations = list(
-      list(x = 145, y = 0.5, z = max(log_likelihood_values), text = "Optimal Point", 
-           showarrow = TRUE, arrowhead = 2, ax = 20, ay = -40)
-    )
-  ))
+$$\frac {dP}{dt} = rP$$ where *P* is the population, *t* is time and *r* is a growth rate, or expressed differently, after solving the above differential equation:
 
-# Show the plot
-fig_likelihood
+$$P(t) = P_{0} e^{rt}$$ You may want to flex your calculus muscles and go ahead and solve the differential equation above using integration.
 
-```
+However, in a way, this equation is unsatisfactory because it does not include the key bit, which is the flattening of the population curve. This is were the Belgian mathematician Pierre Francois Verhulst arrived, having read Malthus he said:
 
-### The linear regression model as a Bayes model estimated through grid approximation.
+$$\frac{dP}{dt} = rP \left(1 - \frac{P}{K}\right)$$
 
-We have run the Bayesian model in Stan and in brms above. We will discuss their specification further down. For the time being, let's fit the model in a simple way "by hand" that is without the help of a specialised package. This is to get a fee of what is going on under the hub.
+where K is the carrying capacity. See what happens when K approaches P
 
-As you will have guessed, we use the likelihood function that we have developed and used above. And, in this Bayesian framework we also use two priors, one for the intercept and one for the slope.
+Here is the form that arises when solving the dynamic equation above:
 
-```{r}
-likelihood_linear_regression <- function(beta0, beta1, x, y) { # the likelihood as above
-  mu <- beta0 + beta1 * x  # predicted values
-  log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))  
-  return(log_likelihood)
-}
+$$ P(t) = \frac{K}{1 + CKe^{-rt}} = \frac{K}{1 + \left(\frac{K - P_{0}}{P_{0}}\right)e^{-rt}}
+ $$
 
+Now this looks very much like our sigmoid equation for the logistic regression, when K = 1!
 
-prior_beta0 <- function(beta0) { # specifying the prior for the intercept here
-  dnorm(beta0, mean = 170, sd = 10, log = TRUE)
-}
+This should answer the first question, i.e. where does the logistic equation come from.
 
-prior_beta1 <- function(beta1) { # and for the slope
-  dnorm(beta1, mean = 0.5, sd = 0.1, log = TRUE)
-}
+Now to the second question: what are we supposed to do with the logistic equation.
 
+### Probabilities, odds and odds ratios
 
-beta0_values <- seq(130, 160, by = 1) # the range for the intercept and slope, i.e. my parameter space
-beta1_values <- seq(0, 1, by = 0.01)
+Let the probability of p = 3/10, then the odds for the event happening is Of = 3/7 and the odds for the event not happening is Oa = 7/3.
 
-# Calculate the log-posterior ## see in week 1 the addednum about how to understand Vectorize if this is confusing. It can be for me and had to look up.
+More formally, the odds can be defined as:
 
-log_posterior <- outer(beta0_values, beta1_values, Vectorize(function(b0, b1) {
-  log_likelihood <- likelihood_linear_regression(b0, b1, df_hse_wk7$Weight, df_hse_wk7$Height)
-  log_prior_beta0 <- prior_beta0(b0)
-  log_prior_beta1 <- prior_beta1(b1)
-  log_posterior <- log_likelihood + log_prior_beta0 + log_prior_beta1
-  return(log_posterior)
-}))
+$$ O = \frac {p}{1-p} $$ Verify this yourself: $$ Of = \frac{\frac{3}{10}}{\frac{7}{10}} = \frac{3}{7} $$
 
-# Convert to probability scale
+Now let's return to the logistic equation above:
 
-# Normalize the posterior
-posterior <- posterior / sum(posterior) # a vector of probabilities
+$$ P(x) = \frac{1}{1 + \exp(-(\beta_0 + \beta_1 \cdot x)}$$
 
-# now I am going to sample from the posterior, like above. 
-set.seed(1974)
-samples <- sample(seq_along(posterior), size = length(posterior), replace = TRUE, prob = posterior)# this gives you positions on the vector
+Below, I am showing you that you can arrive at a formulation that links the linear equation with the odds. Here it goes:
 
-#now I need to translate the vector positions into something that can find the positions 
-# on the specified beta0 and beta1 grid. 
-# what I came up with is the following
-# create the grid of the intercepts and slopes. 
-# the number of rows is the length of the vector
-array_to_find_values <- expand.grid(beta0_values, beta1_values)
+![](images/logistic_odds.jpg)
 
-df_to_find_values <- data.frame(table(samples)) # this tells me how many times each value appears, or rather each "position"
+I am rewriting the last few bits here as they are extremely important:
 
-row_nums <- as.numeric(as.character(df_to_find_values$samples)) # easier to get them out of the dataframe.
-num_times <- as.numeric(as.character(df_to_find_values$Freq))
+$$
+exp(\beta_0 + beta_1.x) = \frac{P}{1-P}
+$$
 
-# create a loop to allocate the positions to the values.
-sampled_intercepts <- list()
-sampled_slopes <- list()
-for(i in 1:nrow(df_to_find_values)){
-  
- sampled_intercepts[[i]] <- rep(expanded[row_nums,1], num_times)
- sampled_slopes[[i]] <- rep(expanded[row_nums,2], num_times)
-  
-}
+This is the connection between the linear equation and the odds
 
- sampled_intercepts <- unlist( sampled_intercepts)
- sampled_slopes <- unlist( sampled_slopes)
-mean(sampled_intercepts)
- mean(sampled_slopes)
- 
-# and this is another way.
- sampled_beta0 <- beta0_values[(samples - 1) %% length(beta0_values) + 1]
- sampled_beta1 <- beta1_values[(samples - 1) %/% length(beta0_values) + 1]
+and
 
+$$beta_0 + beta_1.x = ln(\frac{P}{1-P})
+$$
 
+and this is the logit, the link function, which connects the linear predictor to the log odds.
 
-```
+For a continuous variable X, then the odds ratio can be interpreted as follows:
 
+$$
+\frac{O(x+1)}{O(x)} = \frac{\frac{P(x+1)}{1-P(x+1)}}{\frac{P(x)}{1-P(x)}}= \frac{exp(\beta_0 + beta_1.(x+1))}{exp(\beta_0 + beta_1.(x))} = exp(\beta_1)
+$$
 
+In other words, the exponentiated coefficient $\beta_1$ in the regression model can be interpreted as an odds ratio of the increase (or decrease) by a unit change in the continuous predictor variable.
 
+There is also the geometric interepretation due to Agresti, which I will show you in the lesson.
+
+<!-- ################### FoR THE MOMENT IRRELEVANT CODE -->
+
+<!-- ```{r{r} -->
+
+<!-- # The log-likelihood for different values of beta0 and beta1 REMIND ME TO TELL YOU ABOUT THE #PLAUSIBLE RANGE! -->
+
+<!-- beta0_values <- seq(130, 160, by = 1)   -->
+
+<!-- beta1_values <- seq(0, 1, by = 0.01)   -->
+
+<!-- log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function -->
+
+<!--                                Vectorize(function(b0, b1) stan_data_slope(b0, b1, df_hse_wk7$Weight  , df_hse_wk7$Height))) -->
+
+<!-- # The MLE for beta0 and beta1 -->
+
+<!-- max_indices <- which(log_likelihood_values == max(log_likelihood_values), arr.ind = TRUE) -->
+
+<!-- mle_beta0 <- beta0_values[max_indices[1]] -->
+
+<!-- mle_beta1 <- beta1_values[max_indices[2]] -->
+
+<!-- fig_likelihood <- plot_ly(x = beta0_values, y = beta1_values, z = log_likelihood_values,  -->
+
+<!--                type = "surface", colorscale = "Blues") %>% -->
+
+<!--   layout(scene = list( -->
+
+<!--     xaxis = list(title = "Intercept (β0)", titlefont = list(size = 18, color = "black")), -->
+
+<!--     yaxis = list(title = "Slope (β1)", titlefont = list(size = 18, color = "black")), -->
+
+<!--     zaxis = list(title = "Log-Likelihood", titlefont = list(size = 18, color = "black")), -->
+
+<!--     annotations = list( -->
+
+<!--       list(x = 145, y = 0.5, z = max(log_likelihood_values), text = "Optimal Point",  -->
+
+<!--            showarrow = TRUE, arrowhead = 2, ax = 20, ay = -40) -->
+
+<!--     ) -->
+
+<!--   )) -->
+
+<!-- # Show the plot -->
+
+<!-- fig_likelihood -->
+
+<!-- ``` -->
+
+<!-- ### The linear regression model as a Bayes model estimated through grid approximation. -->
+
+<!-- We have run the Bayesian model in Stan and in brms above. We will discuss their specification further down. For the time being, let's fit the model in a simple way "by hand" that is without the help of a specialised package. This is to get a fee of what is going on under the hub. -->
+
+<!-- As you will have guessed, we use the likelihood function that we have developed and used above. And, in this Bayesian framework we also use two priors, one for the intercept and one for the slope. -->
+
+<!-- ```{r} -->
+
+<!-- likelihood_linear_regression <- function(beta0, beta1, x, y) { # the likelihood as above -->
+
+<!--   mu <- beta0 + beta1 * x  # predicted values -->
+
+<!--   log_likelihood <- sum(dnorm(y, mean = mu, sd = 1, log = TRUE))   -->
+
+<!--   return(log_likelihood) -->
+
+<!-- } -->
+
+<!-- prior_beta0 <- function(beta0) { # specifying the prior for the intercept here -->
+
+<!--   dnorm(beta0, mean = 170, sd = 10, log = TRUE) -->
+
+<!-- } -->
+
+<!-- prior_beta1 <- function(beta1) { # and for the slope -->
+
+<!--   dnorm(beta1, mean = 0.5, sd = 0.1, log = TRUE) -->
+
+<!-- } -->
+
+<!-- beta0_values <- seq(130, 160, by = 1) # the range for the intercept and slope, i.e. my parameter space -->
+
+<!-- beta1_values <- seq(0, 1, by = 0.01) -->
+
+<!-- # Calculate the log-posterior ## see in week 1 the addednum about how to understand Vectorize if this is confusing. It can be for me and had to look up. -->
+
+<!-- log_posterior <- outer(beta0_values, beta1_values, Vectorize(function(b0, b1) { -->
+
+<!--   log_likelihood <- likelihood_linear_regression(b0, b1, df_hse_wk7$Weight, df_hse_wk7$Height) -->
+
+<!--   log_prior_beta0 <- prior_beta0(b0) -->
+
+<!--   log_prior_beta1 <- prior_beta1(b1) -->
+
+<!--   log_posterior <- log_likelihood + log_prior_beta0 + log_prior_beta1 -->
+
+<!--   return(log_posterior) -->
+
+<!-- })) -->
+
+<!-- # Convert to probability scale -->
+
+<!-- # Normalize the posterior -->
+
+<!-- posterior <- posterior / sum(posterior) # a vector of probabilities -->
+
+<!-- # now I am going to sample from the posterior, like above.  -->
+
+<!-- set.seed(1974) -->
+
+<!-- samples <- sample(seq_along(posterior), size = length(posterior), replace = TRUE, prob = posterior)# this gives you positions on the vector -->
+
+<!-- #now I need to translate the vector positions into something that can find the positions  -->
+
+<!-- # on the specified beta0 and beta1 grid.  -->
+
+<!-- # what I came up with is the following -->
+
+<!-- # create the grid of the intercepts and slopes.  -->
+
+<!-- # the number of rows is the length of the vector -->
+
+<!-- array_to_find_values <- expand.grid(beta0_values, beta1_values) -->
+
+<!-- df_to_find_values <- data.frame(table(samples)) # this tells me how many times each value appears, or rather each "position" -->
+
+<!-- row_nums <- as.numeric(as.character(df_to_find_values$samples)) # easier to get them out of the dataframe. -->
+
+<!-- num_times <- as.numeric(as.character(df_to_find_values$Freq)) -->
+
+<!-- # create a loop to allocate the positions to the values. -->
+
+<!-- sampled_intercepts <- list() -->
+
+<!-- sampled_slopes <- list() -->
+
+<!-- for(i in 1:nrow(df_to_find_values)){ -->
+
+<!--  sampled_intercepts[[i]] <- rep(expanded[row_nums,1], num_times) -->
+
+<!--  sampled_slopes[[i]] <- rep(expanded[row_nums,2], num_times) -->
+
+<!-- } -->
+
+<!--  sampled_intercepts <- unlist( sampled_intercepts) -->
+
+<!--  sampled_slopes <- unlist( sampled_slopes) -->
+
+<!-- mean(sampled_intercepts) -->
+
+<!--  mean(sampled_slopes) -->
+
+<!-- # and this is another way. -->
+
+<!--  sampled_beta0 <- beta0_values[(samples - 1) %% length(beta0_values) + 1] -->
+
+<!--  sampled_beta1 <- beta1_values[(samples - 1) %/% length(beta0_values) + 1] -->
+
+<!-- ``` -->
