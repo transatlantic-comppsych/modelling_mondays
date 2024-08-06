@@ -2494,6 +2494,14 @@ lines(sorted_weights, sorted_probabilities, col = "red", lwd = 2)
 
 ```
 
+```{r}
+beta_0 <- -4.97 # the x variable equivalent
+beta_1 <- 0.067
+
+probs_at_95kg <- 1/(1 + exp(-(-4.97 + 0.067*95))) # the logistic function
+probs_at_95kg
+```
+
 <!-- ################### FoR THE MOMENT IRRELEVANT CODE -->
 
 <!-- ```{r{r} -->
