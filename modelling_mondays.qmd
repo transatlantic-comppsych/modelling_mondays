@@ -1565,7 +1565,7 @@ SSE & = \sum_{i=1}^n(y_i - \hat y_i)^2  \\
 & = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i)^2) \\
 & = \sum_{i=1}^n(y_i - \hat \beta_0 - \hat \beta_1.x_i)^2
 \end{aligned}
-$$
+$$ {#eq-28}
 
 Now let's take the derivative with respect to the intercept. By doing this, we will arrive at some expression that we will be able to set to zero and solve to find the minima.
 
@@ -1587,7 +1587,7 @@ and then solving each one of them by setting each equal to zero. We can derive t
 
 $$
 \hat{\beta}_0 = \overline{y} - \hat{\beta}_1 \overline{x}
-$$
+$$ {#eq-29}
 
 and for the slope:
 
@@ -1596,7 +1596,7 @@ $$
 \hat \beta_1 = \frac{\sum_{i=1}^{n} (x_i - \overline{x})(y_i - \overline{y})} {\sum_{i=1}^{n} (x_i - \overline{x})^2} 
 & = \frac{SXY}{SXX}
 \end{aligned}
-$$
+$$ {#eq-30}
 
 There are several things to marvel at here, including the importance of the mean in all this. This is what your programme churns out and allows you to do the maths.
 
@@ -2351,7 +2351,7 @@ Our task is to answer the question: how likely is a person of weight = X to be "
 
 Enter the logistic function, a wonderous device that can squeeze any real value within a predefined range.
 
-$$\sigma(t) = \frac{1}{1 + \exp(-a \cdot t)}$$
+$$\sigma(t) = \frac{1}{1 + \exp(-a \cdot t)}$$ {#eq-9.1}
 
 ```{r}
 t <- -10:10 # the x variable equivalent
@@ -2393,7 +2393,7 @@ plot(probs[[i]])
 
 We can therefore use the logistic function to run our regression. All we have to do to obtain probabilities for each value of x is the following:
 
-$$ P(x) = \frac{1}{1 + \exp(-(\beta_0 + \beta_1 \cdot x)}$$
+$$ P(x) = \frac{1}{1 + \exp(-(\beta_0 + \beta_1 \cdot x)}$$ {#eq-9.2}
 
 Now you will ask two important questions, of course. The first one is: where does the logistic function even come from? The second is, what am I supposed to do with this?
 
@@ -2407,20 +2407,20 @@ This seems to suggest that populations can grow when there is plenty but at some
 
 Mathematically, it seems that he only half formulated his idea as the formalisms that came out of his writings was the exponential growth:
 
-$$\frac {dP}{dt} = rP$$ where *P* is the population, *t* is time and *r* is a growth rate, or expressed differently, after solving the above differential equation:
+$$\frac {dP}{dt} = rP$$ {#eq-9.3} where *P* is the population, *t* is time and *r* is a growth rate, or expressed differently, after solving the above differential equation:
 
-$$P(t) = P_{0} e^{rt}$$ You may want to flex your calculus muscles and go ahead and solve the differential equation above using integration.
+$$P(t) = P_{0} e^{rt}$$ {#eq-9.4} You may want to flex your calculus muscles and go ahead and solve the differential equation above using integration.
 
 However, in a way, this equation is unsatisfactory because it does not include the key bit, which is the flattening of the population curve. This is were the Belgian mathematician Pierre Francois Verhulst arrived, having read Malthus he said:
 
-$$\frac{dP}{dt} = rP \left(1 - \frac{P}{K}\right)$$
+$$\frac{dP}{dt} = rP \left(1 - \frac{P}{K}\right)$$ {#eq-9.5}
 
 where K is the carrying capacity. See what happens when K approaches P
 
 Here is the form that arises when solving the dynamic equation above:
 
 $$ P(t) = \frac{K}{1 + CKe^{-rt}} = \frac{K}{1 + \left(\frac{K - P_{0}}{P_{0}}\right)e^{-rt}}
- $$
+ $$ {#eq-9.6}
 
 Now this looks very much like our sigmoid equation for the logistic regression, when K = 1!
 
@@ -2434,7 +2434,7 @@ Let the probability of p = 3/10, then the odds for the event happening is Of = 3
 
 More formally, the odds can be defined as:
 
-$$ O = \frac {p}{1-p} $$ Verify this yourself: $$ Of = \frac{\frac{3}{10}}{\frac{7}{10}} = \frac{3}{7} $$
+$$ O = \frac {p}{1-p} $$ {#eq-9.7} Verify this yourself: $$ Of = \frac{\frac{3}{10}}{\frac{7}{10}} = \frac{3}{7} $$
 
 Now let's return to the logistic equation above:
 
@@ -2447,59 +2447,407 @@ Below, I am showing you that you can arrive at a formulation that links the line
 I am rewriting the last few bits here as they are extremely important:
 
 $$
-exp(\beta_0 + beta_1.x) = \frac{P}{1-P}
-$$
+exp(\beta_0 + beta_1.x) = \frac{P}{1-P} = odds
+$$ {#eq-9.8}
 
 This is the connection between the linear equation and the odds
 
 and
 
-$$beta_0 + beta_1.x = ln(\frac{P}{1-P})
-$$
+$$beta_0 + beta_1.x = ln(\frac{P}{1-P}) = log_odds
+$$ {#eq-9.9}
 
 and this is the logit, the link function, which connects the linear predictor to the log odds.
 
-For a continuous variable X, then the odds ratio can be interpreted as follows:
+For a continuous variable X, then the odds ratio OR can be interpreted as follows:
 
 $$
-\frac{O(x+1)}{O(x)} = \frac{\frac{P(x+1)}{1-P(x+1)}}{\frac{P(x)}{1-P(x)}}= \frac{exp(\beta_0 + beta_1.(x+1))}{exp(\beta_0 + beta_1.(x))} = exp(\beta_1)
-$$
+OR = \frac{O(x+1)}{O(x)} = \frac{\frac{P(x+1)}{1-P(x+1)}}{\frac{P(x)}{1-P(x)}}= \frac{exp(\beta_0 + beta_1.(x+1))}{exp(\beta_0 + beta_1.(x))} = exp(\beta_1)
+$$ {#eq-9.10}
 
 In other words, the exponentiated coefficient $\beta_1$ in the regression model can be interpreted as an odds ratio of the increase (or decrease) by a unit change in the continuous predictor variable.
 
-There is also the geometric interepretation due to Agresti, which I will show you in the lesson.
+There is also the geometric interepretation due to Agresti, which we will also explain below.
+
+### Week 10 Logistic Regression II
+
+#### Interpretation of the logistic output
+
+We will now fit a logistic regression model to the data. We will initially fit it using R's inbuilt functions to estimate the parameters, we will show next time how to use maximum likelihood to estimate the parameters ourselves.
+
+We will use this to aid the interpretation of the outputs of the model
+
+Remember what we said above that we fit the logistic model in analogy to the OLS:
+
+$$y_i = \beta_0 + \beta_1.xi + error$$
+
+Here is how to fit it.
+
+```{r}
+# run the logistic regression using inbuilt R funcs
+logistic_model <-glm(Height_dich ~ Weight, data = df_hse_wk7, family = binomial)
+
+summary(logistic_model)
+
+
+
+
+```
+
+We now have an estimate for the intercept and one for the slope. Let's see what these mean. I will extract the parameters below and then use them.
+
+```{r}
+logistic_model_params <- broom:: tidy(logistic_model)
+beta_0 <- logistic_model_params[logistic_model_params$term=="(Intercept)",]$estimate  # the x variable equivalent
+beta_1 <- logistic_model_params[logistic_model_params$term=="Weight",]$estimate
+
+
+probs_at_95kg <- 1/(1 + exp(-(beta_0 + beta_1*95))) # the logistic function
+probs_at_95kg
+
+#How well does it agree with what we get from the data?
+#Read it from the data above 
+plot(sorted_weights, sorted_probabilities, col = "red", lwd = 2)
+abline(v=95, lty = "dashed" )
+# now an interpolation trick to read off the y-value at the intersection
+y_value_at_95 <- approx(sorted_weights, sorted_probabilities, xout = 95)$y
+abline(h = y_value_at_95, lty = "dashed" )
+
+```
+
+Once we have the parameters, we can use them to derive probabilities for each Weight value using equations 9.1 and 9.2 from last week, i.e. the sigmoid function with a carrying capacity of 1. Remember that equation 9.2 defines the probabilities in the regression model:
+
+$$ P(x) = \frac{1}{1 + \exp(-(\beta_0 + \beta_1 \cdot x)}$$
+
+so we can now substitute for each value of x and recover a sigmoid curve.
+
+```{r}
+# using the parameters from above
+logistic_model_probabilities<- 1/(1 + exp(-(beta_0 + beta_1*df_hse_wk7$Weight)))
+
+
+# Plot the probability to weight curve
+plot(df_hse_wk7$Weight, logistic_model_probabilities, col = "blue", lwd = 2,
+     ylab = "Probabilities", xlab = "Weights")
+
+# the probabilities at the quartals
+y_values <- c(0.25, 0.5, 0.75)
+
+# Loop through each y-value to calculate corresponding x-value and plot the lines
+for (i in y_values) {
+  
+  # use this to interpoplate the x-values
+  x_value <- approx(logistic_model_probabilities, df_hse_wk7$Weight, xout = i)$y
+  
+  #  the horizontal line
+  segments(x0 = min(df_hse_wk7$Weight), y0 = i, x1 = x_value, y1 = i, col = "red", lty = "dashed")
+  
+  # vertical line from the x-axis to the curve
+  segments(x0 = x_value, y0 = min(logistic_model_probabilities), x1 = x_value, y1 = i, col = "red", lty = "dashed")
+  
+  # Mark the intersection point
+  points(x_value, i, col = "red", pch = 19)
+}
+
+
+```
+
+I have added the red lines to indicate the 25, 50 and 75% probabilities. Particularly the 50% line is important in many applications of the sigmoid function, such as in toxicology where it is taken describe the poisonous aspects of substances, the value at which there is a 50% probability that mice (or whatever experimental animal or cell-line is used for this purpose) after receiving the substance. This helps compare them to each other. Here it denotes the 50% probability that one will be tall.
+
+As predicted, the slope our tallness probability to weight slope relatively flat and the "sigmoidicity" of the curve is hardly recognisable.
+
+I suggest you play around with this curve. Increase the $\beta_1$ parameter for example
+
+```{r}
+# increase the beta_1 by 50%
+new_beta_1 <- 1.5*beta_1
+new_beta_1_logistic_model_probabilities<- 1/(1 + exp(-(beta_0 + new_beta_1*df_hse_wk7$Weight)))
+
+# according to the 
+plot(df_hse_wk7$Weight, new_beta_1_logistic_model_probabilities, col = "blue", lwd = 2)
+
+# the probabilities at the quartals
+y_values <- c(0.25, 0.5, 0.75)
+
+# Loop through each y-value to calculate corresponding x-value and plot the lines
+for (i in y_values) {
+  
+  # use this to interpoplate the x-values
+  x_value <- approx(new_beta_1_logistic_model_probabilities, df_hse_wk7$Weight, xout = i)$y
+  
+  #  the horizontal line
+  segments(x0 = min(df_hse_wk7$Weight), y0 = i, x1 = x_value, y1 = i, col = "red", lty = "dashed")
+  
+  # vertical line from the x-axis to the curve
+  segments(x0 = x_value, y0 = min(new_beta_1_logistic_model_probabilities), x1 = x_value, y1 = i, col = "red", lty = "dashed")
+  
+  # Mark the intersection point
+  points(x_value, i, col = "red", pch = 19)
+}
+
+```
+
+Notice the shift. The curve (due to the limit at the x-values) has lost its sigmoid shape. Also the corresponding values for our three landmark % effect have been shifted to the left on the x-axis
+
+You may want to play some more with this curve and have it shift to the left or right by adding or subtracting to the x-values.
+
+Now, you will wonder what the intercept means. It means nothing except that it is a parameter needed to fit our equation, it has no intrinsic meaning (what would a negative weight be). However, let's see what happens when we center our x-variable.
+
+```{r}
+# remember from our Week 8 lesson
+df_hse_wk7$Weight_centred <- df_hse_wk7$Weight - mean(df_hse_wk7$Weight)
+
+logistic_model_centred <-glm(Height_dich ~ Weight_centred, data = df_hse_wk7, family = binomial)
+
+summary(logistic_model_centred)
+
+
+```
+
+Now the centred interecept looks different. For a start it is a positive number. What does it correspond to?
+
+Well let's check what happens when we plot against centred weight
+
+```{r}
+logistic_model_params_centred <- broom:: tidy(logistic_model_centred)
+beta_0_centred <- logistic_model_params_centred[logistic_model_params_centred$term=="(Intercept)",]$estimate  # the x variable equivalent
+beta_1_centred <- logistic_model_params_centred[logistic_model_params_centred$term=="Weight_centred",]$estimate
+
+
+
+# using the parameters from above
+logistic_model_probabilities_centred <- 1/(1 + exp(-(beta_0_centred + beta_1_centred*df_hse_wk7$Weight_centred)))
+
+
+# Plot the probability to weight curve
+plot(df_hse_wk7$Weight_centred, logistic_model_probabilities_centred, col = "blue", lwd = 2,
+     ylab = "Probabilities", xlab = "Weights")
+
+
+```
+
+We see that the intercept parameter becomes the probability at the mean (or the logit at the mean). As with the linear regression, think about what happens when you use the centred variable for the value 0, i.e. where x is equal to the mean (in this case the mean weight). The equation $\beta_0 + \beta_1*0$ equals $\beta_0$ and therefore because of equation 9.9, at the mean of x (here at the mean weight) the intercept is the log odds, which is the output of the intercept.
+
+OK, we can now use the equations we have derived above to obtain from teh probabilities the log odds and the odds ratios.
+
+Let's get the odds first. As we recall from equation 9.7, we can obtain th odds from teh probabilities (or from exponentiating the linear equations):
+
+$$
+exp(\beta_0 + beta_1.x) = \frac{P}{1-P} = odds
+$$
+
+```{r}
+# getting the odds
+logistic_model_odds <- exp(beta_0 + beta_1*df_hse_wk7$Weight)
+```
+
+Let's now get the log odds.
+
+```{r}
+# getting the log odds
+
+logistic_model_log_odds <- beta_0 + beta_1*df_hse_wk7$Weight
+```
+
+Let's now put all these in a dataframe and play with them.
 
 ```{r}
 
-fit_logistic <- glm(Height_dich ~ Weight, data = df_hse_wk7, family = binomial)
-summary(fit_logistic)
-df_hse_wk7$log_odds <- predict(fit_logistic)
-df_hse_wk7$odds <- exp(df_hse_wk7$log_odds)
-df_hse_wk7$probabilities <- predict(fit_logistic, type = "response")
+df_probs_odds_log_odds <- data.frame(probs = logistic_model_probabilities,
+odds = logistic_model_odds, 
+log_odds = logistic_model_log_odds,
+weight = df_hse_wk7$Weight)
+
+head(df_probs_odds_log_odds)
+
+
+```
+
+Play around with this table. You should be able to get the odds from the probabilities and vice versa. For example, taking the first row, 0.58847/(1-0.58847) gives you \~ 1.43, which is the odds, as you can see next to it, log it and you get the log odds, or exponentiate the log odds (exp(0.3576623)) and you get the odds for weight at 80kg.
+
+OK you will ask, what about the odds ratio? We have defined it in 9.10 as
+
+$$
+OR = \frac{O(x+1)}{O(x)} = \frac{\frac{P(x+1)}{1-P(x+1)}}{\frac{P(x)}{1-P(x)}}= \frac{exp(\beta_0 + beta_1.(x+1))}{exp(\beta_0 + beta_1.(x))} = exp(\beta_1)
+$$
+
+So, you should be able to get the odds ratio by simply exponentiating the coefficient $\beta_1$
+
+Let's do it:
+
+```{r}
+odds_ratio <- exp(beta_1)
+odds_ratio
+```
+
+The interepretation of the odds ratio is notoriously difficult when it comes to continuous variables. It denotes the increase by one unit in x (here weight), or as the formula above states, the odds at x+1 over the odds at x. Let's see whether that's true.
+
+I have below kept the rows for weights from 70 and 71, and 80 and 81 kg and extracted the odds and built their ratio (obviously you can try it out for any weight change).
+
+```{r}
+
+odds_80 <- unique(df_probs_odds_log_odds[df_probs_odds_log_odds$weight==80,]$odds)
+
+odds_81 <- unique(df_probs_odds_log_odds[df_probs_odds_log_odds$weight==81,]$odds)
+
+odds_70 <- unique(df_probs_odds_log_odds[df_probs_odds_log_odds$weight==70,]$odds)
+
+odds_71 <- unique(df_probs_odds_log_odds[df_probs_odds_log_odds$weight==71,]$odds)
+
+round(odds_81/odds_80, 3) == round(odds_ratio, 3)
+round(odds_71/odds_70, 3) == round(odds_ratio, 3)
+```
+
+And you can see that indeed, the odds ratio agrees with our exponentiation of the coefficient we got from the logistic equation for both cases.
+
+We can now state that the odds of every step increase in x is the odds of the previous value scaled by the exponentiated coefficient, or that an **increase of one point on x over the previous value is the odds ratio.**
+
+In our case, the odds ratio is what you get for a kilogram increase, you get an increase in odds to be tall of roughly 6%.
+
+**Please note:** the 6% increase is over the previous value, the increase over 10 kilograms, for example, is not 60% though! Instead, if you wanted to find out the odds for an additional 10kg (and couldn't bother to read it from the table, or if you had to extrapolate it) you have to do the following:
+
+$$
+odds_n = odds_{base} .OR^n
+$$
+
+where, n is in this case the number of kilograms, hence for 10 kg
+
+```{r}
+calculated_odds_at_80 <- odds_70*odds_ratio^10
+round(calculated_odds_at_80, 3) == round(odds_80, 3)
+
+# and the rate increase is 
+perc_increase_70_80 <- 100*((odds_80 - odds_70)/odds_70)
+perc_increase_70_80
+```
+
+One last thing is the **geometric interpretation** of the change in probabilities, which is due to Alan Agresti in his book.
+
+If you look at the curve with the probability, you can see that the change in probabilities at every point of weight, that is $\frac{\partial P}{\partial x}$ in other words, we are trying to find the tangent at every point of this curve. Someone apparently differentiated this and arrived at the following formalism for a change in x:
+
+$$
+\frac{\partial P}{\partial x} = \beta_1.P(1-P)
+$$
+
+Here is the curve again.
+
+```{r}
+plot(df_hse_wk7$Weight, logistic_model_probabilities, col = "blue", lwd = 2,
+      ylab = "Probabilities", xlab = "Weights")
+```
+
+And here is some playing around with the linear appproximation.
+
+```{r}
+linear_approximation <- beta_1*logistic_model_probabilities*(1-logistic_model_probabilities)
+
+df_probs_odds_log_odds$linear_approximation <- linear_approximation
+
+# at what weight is the maximum change in probabilities
+df_probs_odds_log_odds[which.max(df_probs_odds_log_odds$linear_approximation),]$weight
+
+
+# the maximum is around 50% probability, as you might expect
+df_probs_odds_log_odds[which.max(df_probs_odds_log_odds$linear_approximation),]$probs
+
+#at what weight is the minimum change in probabilities
+df_probs_odds_log_odds[which.min(df_probs_odds_log_odds$linear_approximation),]$weight
+```
+
+```{# using the parameters from above}
+logistic_model_probabilities<- 1/(1 + exp(-(beta_0 + beta_1*df_hse_wk7$Weight)))
+
+
+# Plot the probability to weight curve
+plot(df_hse_wk7$Weight, logistic_model_probabilities, col = "blue", lwd = 2,
+     ylab = "Probabilities", xlab = "Weights")
+
+# the probabilities at the quartals
+y_values <- c(0.25, 0.5, 0.75)
+
+# Loop through each y-value to calculate corresponding x-value and plot the lines
+for (i in y_values) {
+  
+  # use this to interpoplate the x-values
+  x_value <- approx(logistic_model_probabilities, df_hse_wk7$Weight, xout = i)$y
+  
+  #  the horizontal line
+  segments(x0 = min(df_hse_wk7$Weight), y0 = i, x1 = x_value, y1 = i, col = "red", lty = "dashed")
+  
+  # vertical line from the x-axis to the curve
+  segments(x0 = x_value, y0 = min(logistic_model_probabilities), x1 = x_value, y1 = i, col = "red", lty = "dashed")
+  
+  # Mark the intersection point
+  points(x_value, i, col = "red", pch = 19)
+}
+
 
 ```
 
 ```{r}
-plot(df_hse_wk7$Weight, df_hse_wk7$Height_dich, pch = 19, col = 'blue', 
-     xlab = "Weight", ylab = "Height (0 = Short, 1 = Tall)",
-     main = "Tallness and Weight")
-
 
 sorted_indices <- order(df_hse_wk7$Weight)
 sorted_weights <- df_hse_wk7$Weight[sorted_indices]
 sorted_probabilities <- df_hse_wk7$probabilities[sorted_indices]
 
-
+plot(df_hse_wk7$Weight, df_hse_wk7$Height_dich, pch = 19, col = 'blue', 
+     xlab = "Weight", ylab = "Height (0 = Short, 1 = Tall)",
+     main = "Tallness and Weight")
 lines(sorted_weights, sorted_probabilities, col = "red", lwd = 2)
+# for some reason the superimposition does not work. Use the plot below to see
+
+
+
+
+
 
 ```
 
-```{r}
-beta_0 <- -4.97 # the x variable equivalent
-beta_1 <- 0.067
+#### Extract probabilities
 
-probs_at_95kg <- 1/(1 + exp(-(-4.97 + 0.067*95))) # the logistic function
+```{r}
+# run the logistic regression in R
+logistic_model <-glm(Height_dich ~ Weight, data = df_hse_wk7, family = binomial)
+
+logistic_model_params <- broom:: tidy(logistic_model)
+beta_0 <- logistic_model_params[logistic_model_params$term=="(Intercept)",]$estimate  # the x variable equivalent
+beta_1 <- logistic_model_params[logistic_model_params$term=="Weight",]$estimate
+
+probs_at_95kg <- 1/(1 + exp(-(beta_0 + beta_1*95))) # the logistic function
 probs_at_95kg
+
+#How well does it agree with what we get from the data?
+#Read it from the data above 
+plot(sorted_weights, sorted_probabilities, col = "red", lwd = 2)
+abline(v=95, lty = "dashed" )
+# now an interpolation trick to read off the y-value at the intersection
+y_value_at_95 <- approx(sorted_weights, sorted_probabilities, xout = 95)$y
+abline(h = y_value_at_95, lty = "dashed" )
+
+
+```
+
+#### More on the interpretation of the output of a logistic regression.
+
+```{r}
+# run the logistic regression in R
+logistic_model <-glm(Height_dich ~ Weight, data = df_hse_wk7, family = binomial)
+
+logistic_model_params <- broom:: tidy(logistic_model)
+beta_0 <- logistic_model_params[logistic_model_params$term=="(Intercept)",]$estimate  # the x variable equivalent
+beta_1 <- logistic_model_params[logistic_model_params$term=="Weight",]$estimate
+
+
+probs_at_95kg <- 1/(1 + exp(-(beta_0 + beta_1*95))) # the logistic function
+probs_at_95kg
+
+#How well does it agree with what we get from the data?
+#Read it from the data above 
+plot(sorted_weights, sorted_probabilities, col = "red", lwd = 2)
+abline(v=95, lty = "dashed" )
+# now an interpolation trick to read off the y-value at the intersection
+y_value_at_95 <- approx(sorted_weights, sorted_probabilities, xout = 95)$y
+abline(h = y_value_at_95, lty = "dashed" )
 ```
 
 <!-- ################### FoR THE MOMENT IRRELEVANT CODE -->
