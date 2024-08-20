@@ -2863,7 +2863,7 @@ wins_per_person <- df_results_cranach %>%
 
 We see that, as one would have expected, Portrait of a Lady tops the preferences if we look at each individual.
 
-Now we will want to model these data. The Bradley-Terry model asks the simple question about how much more likely it is for item_i ot be preferred over item_j, say how much more likely it is for Portrait of a Lady to be preferred over Portrait of Martin Luther whenever they are presented next to each other. Formally, this can be expressed as:
+Now we will want to model these data. The Bradley-Terry model asks the simple question about how much more likely it is for item $i$ ot be preferred over item $j$ , say how much more likely it is for Portrait of a Lady to be preferred over Portrait of Martin Luther whenever they are presented next to each other. Formally, this can be expressed as:
 
 $$
 P(i>j) = \frac{P(i)}{P(i) + P(j)}
@@ -2899,7 +2899,7 @@ But let's run a simple BT model on all our data.
 Let's reformulate the model as log odds (remember, odds is the probability of an event happening over its complement, i.e. the event not happening):
 
 $$
-logitP(i>j) = \frac{P(i>j)}{(1-P(i>j))} =  \frac{P(i>j)}{P_(j>i)} 
+logitP(i>j) = log\frac{P(i>j)}{(1-P(i>j))} =  log\frac{P(i>j)}{P_(j>i)} 
 $$ {#eq-11.2}
 
 The last step is due to the simplification The formulation of the BT model uses the log to find the coefficients, i.e.
@@ -2915,7 +2915,7 @@ $$logitP(i>j) = log\frac{P(i)}{P(j)}$$
 Now, the BT is formulated by expressing the log of the P(i) as a coefficient $\beta$
 
 $$
-logit(P(i>j) = log\frac{P(i)}{P(j)}= log\frac{\beta_i}{\beta_j}= \beta_i - \beta_j
+logit(P(i>j) = log\frac{P(i)}{P(j)}= log\frac{e^{\beta_i}}{e{\beta_j}}= \beta_i - \beta_j
 $$
 
 Why use a $\beta$ to express this? There are two inter-related reasons, remember that we want to express all these models with exponential distributions as a general linear model, i.e. as something that involves the simple linear equation. The related reasons is that the log of $\beta$ is easier to handle in a modell, not least because it can take on negative numbers and because we turn multiplicative relationships into additive ones. For example here we can say that the logit of the strength of item $i$ over $j$ is the difference between these two coefficients.
@@ -2946,7 +2946,7 @@ exp(log(p_i))/(exp(log(p_i)) + exp(log(1-p_i)))
 
 Finally, there is another important connection, that to the logistic model:
 
-$$ P(i>j) = \frac{1}{1 + e^-(\beta_i - \beta_j)}
+$$ P(i>j) = \frac{1}{1 + e^{-(\beta_i - \beta_j)}}
 $$
 
 And if we test this out below, we can see that the two approaches converge.
