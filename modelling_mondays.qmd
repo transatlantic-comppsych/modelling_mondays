@@ -2960,9 +2960,19 @@ P_i_greater_j_sigmoid <- 1/(1 + exp(-exponent)) # the sigmoid
 
 P_i_greater_j_sigmoid == n_lady/(n_lady + n_luther) # test if equal to simple probability
 
+
+
 ```
 
 Now this may seem awfully trivial, but it allows us to estimate things nicely. Let's fit a BT model.
+
+```{r}
+p_i <- seq(from = 0,  to = 1, by = 0.1)
+exponent <- log(p_i) - log(1 -p_i) 
+Probabilities <- 1/(1 + exp(-exponent))
+
+plot( log(p_i) - log(1 -p_i), Probabilities)
+```
 
 I am doing some recoding as Stan may not like my nominal variables
 
