@@ -2372,6 +2372,7 @@ for(i in 1:length(a)){
   
   probs[[i]] <- 1/(1 + exp(-a[i]*t)) # the logistic function
   plot(probs[[i]])
+  title(a[i])
   
 }
 
@@ -2502,16 +2503,16 @@ beta_0 <- logistic_model_params[logistic_model_params$term=="(Intercept)",]$esti
 beta_1 <- logistic_model_params[logistic_model_params$term=="Weight",]$estimate
 
 
-probs_at_95kg <- 1/(1 + exp(-(beta_0 + beta_1*95))) # the logistic function
-probs_at_95kg
-
-#How well does it agree with what we get from the data?
-#Read it from the data above 
-plot(sorted_weights, sorted_probabilities, col = "red", lwd = 2)
-abline(v=95, lty = "dashed" )
-# now an interpolation trick to read off the y-value at the intersection
-y_value_at_95 <- approx(sorted_weights, sorted_probabilities, xout = 95)$y
-abline(h = y_value_at_95, lty = "dashed" )
+# probs_at_95kg <- 1/(1 + exp(-(beta_0 + beta_1*95))) # the logistic function
+# probs_at_95kg
+# 
+# #How well does it agree with what we get from the data?
+# #Read it from the data above 
+# plot(sorted_weights, sorted_probabilities, col = "red", lwd = 2)
+# abline(v=95, lty = "dashed" )
+# # now an interpolation trick to read off the y-value at the intersection
+# y_value_at_95 <- approx(sorted_weights, sorted_probabilities, xout = 95)$y
+# abline(h = y_value_at_95, lty = "dashed" )
 
 ```
 
@@ -2754,6 +2755,229 @@ df_probs_odds_log_odds[which.max(df_probs_odds_log_odds$linear_approximation),]$
 df_probs_odds_log_odds[which.min(df_probs_odds_log_odds$linear_approximation),]$weight
 ```
 
+### 
+
+## Week 11: Pairwise comparisons and the Bradley Terry model
+
+The logistic regression is related to the Bradley Terry model, is a very useful way to analyse rankings, and therefore also choices. We are having this lesson because I think that this approach can be fruitful for us in terms of getting at peopole's choices and their latent preferences.
+
+Economists and people in advertising use forced pairwise choices to assess people's preferences. I have created an example here and many of you have responded by choosing your favourite Cranach portrait out of each pair of portraits from a sample of five: <https://transatlantic-comppsych.github.io/cranach_comparison/cranach_pairwise_comparison.html>
+
+When people have to choose between $n$ items (let's assume you don't allow ties), every item gets compared to every other item, with the total number of comparisons between items being given by the formula:
+
+$$n_{comparisons} = \frac{n_{items}.(n_{items}-1)}{2}$$
+
+So, for the 5 portraits we had 10 pairs presented. This results in a ranking of the same type you get when one sees in sports leagues where every team gets to play each other. Below I show such a ranking for the portraits:
+
+```{r}
+
+list_results_cranach <- list.files("/Users/argyris/Downloads/Cranach_results", all.files = T,
+                                   pattern = ".csv", full.names = T)
+list_df_results <- list()
+
+for(i in 1: length(list_results_cranach)){
+  
+list_df_results[[i]] <- read.csv(list_results_cranach[i])
+
+list_df_results[[i]]$id <- rep(i, nrow(list_df_results[[i]]))
+  
+}
+
+df_results_cranach <- do.call(rbind, list_df_results)
+
+# simplify name
+df_results_cranach$Choice <- gsub("images/", "",
+                            gsub(".jpg", "", df_results_cranach$Choice))
+
+df_results_cranach$Pair <- gsub("images/",  "", 
+                                gsub(".jpg","", df_results_cranach$Pair))
+
+library(dplyr)
+library(tidyr)
+df_results_cranach <- df_results_cranach %>% 
+  separate(Pair, into = c("Portrait_1", "Portrait_2"), sep = " vs ")
+
+# table(df_results_cranach$Choice)
+
+
+library(ggplot2)
+plot_portraits <- df_results_cranach %>% 
+  count(Choice) %>% 
+  arrange(desc(n)) %>%  
+  mutate(Choice = factor(Choice, levels = Choice)) %>%  
+  ggplot(aes(x = Choice, y = n)) +
+  geom_bar(stat = "identity") +  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
+  labs(x = "", y = "Number of Times Chosen", title = "Number of Wins for each Portrait")  
+
+
+plot_portraits_perc <- df_results_cranach %>% 
+  count(Choice) %>%  
+  mutate(percentage = n / sum(n) * 100) %>%  
+  arrange(desc(percentage)) %>%  
+  mutate(Choice = factor(Choice, levels = Choice)) %>%  
+  ggplot(aes(x = Choice, y = percentage)) +
+  geom_bar(stat = "identity") +  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(x = "", y = "Percentage of Times Chosen", title = "Percentage of Wins for Each Portrait") 
+
+
+
+
+
+
+
+  
+
+```
+
+First, let's look at the data overall:
+
+```{r}
+head(df_results_cranach)
+```
+
+I have wranlged the data so as to have each portrait and then a column with the winner (Choice). I have also recorded the position at which the chosen portrait appeared (to check for people who simply click one side across all comparisons), and also have the latencies, the time it took people to do each comparison (I should probably remove the first trial from all subjects as people were still orienting and my instructions weren't the best).
+
+Since we have $n_{participants} =$ \`\`\`{r}
+n \<- length(df_results_cranach\$id)
+\`\`\`
+We end up with that $n_{participants}$ times 10 comparisons. We can see in the graph below that the Portait of a Lady has the most wins across participants, i.e. it has the greatest number of "wins" in the league of fiver portraits. We can see that overall in this example, female portraits fared better overall and that poor Johann Friedrich's portrait was the least preferred.\
+
+```{r}
+plot_portraits_perc
+```
+
+We can also look at the data in a different way, namely by looking at the ranks within each participant (this is important, because given a sufficient number of choices, each person has their own league). How many times did each portrait top the league across people?
+
+```{r}
+wins_per_person <- df_results_cranach %>% 
+  group_by(id) %>% 
+  count(Choice)  %>% 
+  filter(n == max(n)) %>%   
+  group_by(Choice) %>% 
+    count(Choice)
+
+
+```
+
+We see that, as one would have expected, Portrait of a Lady tops the preferences if we look at each individual.
+
+Now we will want to model these data. The Bradley-Terry model asks the simple question about how much more likely it is for item_i ot be preferred over item_j, say how much more likely it is for Portrait of a Lady to be preferred over Portrait of Martin Luther whenever they are presented next to each other. Formally, this can be expressed as:
+
+$$
+P(i>j) = \frac{P(i)}{P(i) + P(j)}
+$$ {#eq-11.1}
+
+So, let's look at our example of how many more times Portrait of a Lady to be preferred over Portrait of Martin Luther.
+
+```{r}
+portrait_L_ML <- c("Portrait_of_a_Lady" ,"Portrait_of_Martin_Luther")
+portrait_L_ML_counts <- df_results_cranach %>% 
+  filter(Portrait_1 %in% portrait_L_ML & Portrait_2 %in% portrait_L_ML) %>% 
+  count(Choice)
+knitr:: kable(portrait_L_ML_counts)
+```
+
+which means that Portrait of a Lady is preferred 15/17 times, that is, $P_{i>j} =$ 0.882.
+
+One could do inference on this through a simple test of proportions (see also our first few lessons) which tests whether $P_i = P_j =0.5$ aginst the alternative of it not being equal to 0.5.
+
+```{r}
+n_lady <- portrait_L_ML_counts[portrait_L_ML_counts$Choice == "Portrait_of_a_Lady", ]$n
+n_luther <- portrait_L_ML_counts[portrait_L_ML_counts$Choice == "Portrait_of_Martin_Luther", ]$n
+
+n_lady_luther <- n_lady + n_luther  
+
+binom.test(n_lady, n_lady_luther)
+```
+
+In a simple case of two choices without covariates and without any other considerations, the BT model will lead to a similar conclusion.
+
+But let's run a simple BT model on all our data.
+
+Let's reformulate the model as log odds (remember, odds is the probability of an event happening over its complement, i.e. the event not happening):
+
+$$
+logitP(i>j) = \frac{P(i>j)}{(1-P(i>j))} =  \frac{P(i>j)}{P_(j>i)} 
+$$ {#eq-11.2}
+
+The last step is due to the simplification The formulation of the BT model uses the log to find the coefficients, i.e.
+
+$$
+logit(P(i>j)) =  log\frac{P(i>j)}{P_(j>i)} 
+$$
+
+which because of 11.1 reduces to
+
+$$logitP(i>j) = log\frac{P(i)}{P(j)}$$
+
+Now, the BT is formulated by expressing the log of the P(i) as a coefficient $\beta$
+
+$$
+logit(P(i>j) = log\frac{P(i)}{P(j)}= log\frac{\beta_i}{\beta_j}= \beta_i - \beta_j
+$$
+
+Why use a $\beta$ to express this? There are two inter-related reasons, remember that we want to express all these models with exponential distributions as a general linear model, i.e. as something that involves the simple linear equation. The related reasons is that the log of $\beta$ is easier to handle in a modell, not least because it can take on negative numbers and because we turn multiplicative relationships into additive ones. For example here we can say that the logit of the strength of item $i$ over $j$ is the difference between these two coefficients.
+
+Also, we can derive an odds ratio (OR) when we exponentiate:
+
+$$OR(i>j) = \frac{e^\beta_i} {e^\beta_j} = e^{(\beta_i - \beta_j)} $$
+
+This can be interpreted as a regular odds ratio about the how much more likely it is for $i$ to be chosen over $j$.
+
+Now if we go back to the original equation:
+
+$$
+P(i>j) = \frac{P(i)}{P(i) + P(j)}
+$$
+
+we can simply substitute substitute and get:
+
+$$
+P(i>j) = \frac{e^\beta_i}{e^\beta_i + e^\beta_j}
+$$
+
+This should be obvious because exponentiating the log(p) should give us the p. Let's verify
+
+```{r}
+exp(log(p_i))/(exp(log(p_i)) + exp(log(1-p_i))) 
+```
+
+Finally, there is another important connection, that to the logistic model:
+
+$$ P(i>j) = \frac{1}{1 + e^-(\beta_i - \beta_j)}
+$$
+
+And if we test this out below, we can see that the two approaches converge.
+
+```{r}
+p_i <- n_lady/(n_lady + n_luther) # the value for p_i from the data
+exponent <- log(p_i) - log(1 -p_i) # the exponent of the denominator of the sigmoid
+
+
+P_i_greater_j_sigmoid <- 1/(1 + exp(-exponent)) # the sigmoid
+
+P_i_greater_j_sigmoid == n_lady/(n_lady + n_luther) # test if equal to simple probability
+
+```
+
+Now this may seem awfully trivial, but it allows us to estimate things nicely. Let's fit a BT model.
+
+I am doing some recoding as Stan may not like my nominal variables
+
+```{r}
+df_cranach_for_BT <- df_results_cranach %>% 
+  dplyr::select("Portrait_1", "Portrait_2", "Choice", "id") %>% 
+  mutate(across(Portrait_1:Choice, ~ recode(.x,  Portrait_of_a_Lady = "1",
+                             Portrait_of_Johann_Friedrich = "2", 
+                             Portrait_of_a_Young_Girl = "3",
+                             Portrait_of_a_Saxon_Princess	 = "4", 
+                             Portrait_of_Martin_Luther = "5")))
+
+
+```
+
 <!-- ################### FoR THE MOMENT IRRELEVANT CODE -->
 
 <!-- ```{r{r} -->
@@ -2764,7 +2988,7 @@ df_probs_odds_log_odds[which.min(df_probs_odds_log_odds$linear_approximation),]$
 
 <!-- beta1_values <- seq(0, 1, by = 0.01)   -->
 
-<!-- log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector of the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function -->
+<!-- log_likelihood_values <- outer(beta0_values, beta1_values, # the outer function allows me to #have a vector o.  the two parameters, which you then pass each through the vectorised #function. This can be mind-boggling and I have created below an example with a simpler input #and function -->
 
 <!--                                Vectorize(function(b0, b1) stan_data_slope(b0, b1, df_hse_wk7$Weight  , df_hse_wk7$Height))) -->
 
