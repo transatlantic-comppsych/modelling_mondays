@@ -2915,34 +2915,38 @@ $$logitP(i>j) = log\frac{P(i)}{P(j)}$$
 Now, the BT is formulated by expressing the log of the P(i) as a coefficient $\beta$
 
 $$
-logit(P(i>j) = log\frac{P(i)}{P(j)}= log\frac{e^{\beta_i}}{e{\beta_j}}= \beta_i - \beta_j
+logit(P(i>j)) = log\frac{P(i)}{P(j)}= log\frac{e^{\beta_i}}{e^{\beta_j}}= \beta_i - \beta_j
+$$ If the middle part is difficult to follow, think of the following (which we know to be true because that's how $\log$ works. $$
+log\frac{P(i)}{P(j)} = log(P(i)) - log(P(j)) = \beta_i - \beta_j
 $$
 
-Why use a $\beta$ to express this? There are two inter-related reasons, remember that we want to express all these models with exponential distributions as a general linear model, i.e. as something that involves the simple linear equation. The related reasons is that the log of $\beta$ is easier to handle in a modell, not least because it can take on negative numbers and because we turn multiplicative relationships into additive ones. For example here we can say that the logit of the strength of item $i$ over $j$ is the difference between these two coefficients.
+Why use a $\beta$ to express this? There are two inter-related reasons, remember that we want to express all these models with exponential distributions as a general linear model, i.e. as something that involves the simple linear equation. The related reasons is that the log of $\beta$ is easier to handle in a model, not least because it can take on negative numbers and because we turn multiplicative relationships into additive ones (as mentioned above). For example here we can say that the logit of the strength of item $i$ over $j$ is the difference between these two coefficients.
 
-Also, we can derive an odds ratio (OR) when we exponentiate:
-
-$$OR(i>j) = \frac{e^\beta_i} {e^\beta_j} = e^{(\beta_i - \beta_j)} $$
-
-This can be interpreted as a regular odds ratio about the how much more likely it is for $i$ to be chosen over $j$.
-
-Now if we go back to the original equation:
+Also, we can derive an odds ratio (OR) when we exponentiate. To do this, start with the original equation:
 
 $$
 P(i>j) = \frac{P(i)}{P(i) + P(j)}
 $$
 
-we can simply substitute substitute and get:
+we can simply substitute and get:
 
 $$
-P(i>j) = \frac{e^\beta_i}{e^\beta_i + e^\beta_j}
+P(i>j) = \frac{e^{\beta_i}}{e^{\beta_i} + e^{\beta_j}}
 $$
 
 This should be obvious because exponentiating the log(p) should give us the p. Let's verify
 
 ```{r}
-exp(log(p_i))/(exp(log(p_i)) + exp(log(1-p_i))) 
+exp(log(p_i))/(exp(log(p_i)) + exp(log(1-p_i)))
 ```
+
+So to get the OR:
+
+$$
+OR(i>j) = \frac{P(i>j)} {P(j>i)} = \frac{P(i)} {P(j)} = \frac{\frac{e^{\beta_i}}{e^{\beta_i} + e^{\beta_j}}} {\frac{e^{\beta_j}}{e^{\beta_i} + e^{\beta_j}}} = \frac{e^{\beta_i}} {e^{\beta_j}} = e^{(\beta_i - \beta_j)}
+$$
+
+This can be interpreted as a regular odds ratio about how much more likely it is for $i$ to be chosen over $j$.
 
 Finally, there is another important connection, that to the logistic model:
 
@@ -2950,7 +2954,6 @@ $$ P(i>j) = \frac{1}{1 + e^{-(\beta_i - \beta_j)}}
 $$
 
 And if we test this out below, we can see that the two approaches converge.
-
 ```{r}
 p_i <- n_lady/(n_lady + n_luther) # the value for p_i from the data
 exponent <- log(p_i) - log(1 -p_i) # the exponent of the denominator of the sigmoid
