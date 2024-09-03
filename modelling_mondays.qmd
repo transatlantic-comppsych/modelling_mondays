@@ -2839,10 +2839,7 @@ head(df_results_cranach)
 
 I have wranlged the data so as to have each portrait and then a column with the winner (Choice). I have also recorded the position at which the chosen portrait appeared (to check for people who simply click one side across all comparisons), and also have the latencies, the time it took people to do each comparison (I should probably remove the first trial from all subjects as people were still orienting and my instructions weren't the best).
 
-Since we have $n_{participants} =$ \`\`\`{r}
-n \<- length(df_results_cranach\$id)
-\`\`\`
-We end up with that $n_{participants}$ times 10 comparisons. We can see in the graph below that the Portait of a Lady has the most wins across participants, i.e. it has the greatest number of "wins" in the league of fiver portraits. We can see that overall in this example, female portraits fared better overall and that poor Johann Friedrich's portrait was the least preferred.\
+Since we have $n_{participants} =$ \`\`\`{r} n \<- length(df_results_cranach\$id) \`\`\` We end up with that $n_{participants}$ times 10 comparisons. We can see in the graph below that the Portait of a Lady has the most wins across participants, i.e. it has the greatest number of "wins" in the league of fiver portraits. We can see that overall in this example, female portraits fared better overall and that poor Johann Friedrich's portrait was the least preferred.\
 
 ```{r}
 plot_portraits_perc
@@ -2920,7 +2917,7 @@ $$ If the middle part is difficult to follow, think of the following (which we k
 log\frac{P(i)}{P(j)} = log(P(i)) - log(P(j)) = \beta_i - \beta_j
 $$
 
-Why use a $\beta$ to express this? There are two inter-related reasons, remember that we want to express all these models with exponential distributions as a general linear model, i.e. as something that involves the simple linear equation. The related reasons is that the log of $\beta$ is easier to handle in a model, not least because it can take on negative numbers and because we turn multiplicative relationships into additive ones (as mentioned above). For example here we can say that the logit of the strength of item $i$ over $j$ is the difference between these two coefficients.
+Why use a $\beta$ to express this? There are two inter-related reasons, remember that we want to express all these models with exponential distributions as a general linear model, i.e. as something that involves the simple linear equation. The related reasons is that the log probability is easier to handle in a model, not least because it can take on negative numbers and because we turn multiplicative relationships into additive ones (as mentioned above). For example here we can say that the logit of the strength of item $i$ over $j$ is the difference between these two coefficients.
 
 Also, we can derive an odds ratio (OR) when we exponentiate. To do this, start with the original equation:
 
@@ -2934,16 +2931,10 @@ $$
 P(i>j) = \frac{e^{\beta_i}}{e^{\beta_i} + e^{\beta_j}}
 $$
 
-This should be obvious because exponentiating the log(p) should give us the p. Let's verify
-
-```{r}
-exp(log(p_i))/(exp(log(p_i)) + exp(log(1-p_i)))
-```
-
-So to get the OR:
+So to get the OR (also see equation 11.2 above for the intermediate step):
 
 $$
-OR(i>j) = \frac{P(i>j)} {P(j>i)} = \frac{P(i)} {P(j)} = \frac{\frac{e^{\beta_i}}{e^{\beta_i} + e^{\beta_j}}} {\frac{e^{\beta_j}}{e^{\beta_i} + e^{\beta_j}}} = \frac{e^{\beta_i}} {e^{\beta_j}} = e^{(\beta_i - \beta_j)}
+OR(i>j) = \frac{\frac{P(i>j)} {P(j>i)}} {\frac{P(j>i)} {P(i>j)}} = \frac{P(i>j)} {P(j>i)} = \frac{P(i)} {P(j)} = \frac{\frac{e^{\beta_i}}{e^{\beta_i} + e^{\beta_j}}} {\frac{e^{\beta_j}}{e^{\beta_i} + e^{\beta_j}}} = \frac{e^{\beta_i}} {e^{\beta_j}} = e^{(\beta_i - \beta_j)}
 $$
 
 This can be interpreted as a regular odds ratio about how much more likely it is for $i$ to be chosen over $j$.
@@ -2954,6 +2945,7 @@ $$ P(i>j) = \frac{1}{1 + e^{-(\beta_i - \beta_j)}}
 $$
 
 And if we test this out below, we can see that the two approaches converge.
+
 ```{r}
 p_i <- n_lady/(n_lady + n_luther) # the value for p_i from the data
 exponent <- log(p_i) - log(1 -p_i) # the exponent of the denominator of the sigmoid
@@ -2977,17 +2969,167 @@ Probabilities <- 1/(1 + exp(-exponent))
 plot( log(p_i) - log(1 -p_i), Probabilities)
 ```
 
-I am doing some recoding as Stan may not like my nominal variables
+I have done some simple data wrangling here which should facilitate our BT model running.
 
 ```{r}
-df_cranach_for_BT <- df_results_cranach %>% 
-  dplyr::select("Portrait_1", "Portrait_2", "Choice", "id") %>% 
-  mutate(across(Portrait_1:Choice, ~ recode(.x,  Portrait_of_a_Lady = "1",
-                             Portrait_of_Johann_Friedrich = "2", 
-                             Portrait_of_a_Young_Girl = "3",
-                             Portrait_of_a_Saxon_Princess	 = "4", 
-                             Portrait_of_Martin_Luther = "5")))
+df_results_cranach$merged_portraits <- paste(df_results_cranach$Portrait_1, df_results_cranach$Portrait_2)
 
+df_results_cranach_BT <- df_results_cranach %>% 
+  group_by(merged_portraits) %>% 
+  count(Choice)
+
+df_results_cranach_BT <- df_results_cranach_BT[duplicated(df_results_cranach_BT$merged_portraits),]
+
+df_results_cranach_BT <- df_results_cranach_BT %>% 
+  separate(merged_portraits, into = c("Portrait_1", "Portrait_2"), sep = " ")
+
+total_n <- length(unique(df_results_cranach$id))
+
+df_results_cranach_BT$win_1 <- ifelse(
+     df_results_cranach_BT$Portrait_1  == df_results_cranach_BT$Choice, df_results_cranach_BT$n, total_n-df_results_cranach_BT$n)
+
+df_results_cranach_BT$win_2 <- total_n - df_results_cranach_BT$win_1
+
+df_results_cranach_BT <- df_results_cranach_BT %>% 
+  dplyr::select(!c(Choice, n))
+
+
+
+
+
+```
+
+```{r}
+#library(BradleyTerry2)
+
+all_portraits <- unique(c(df_results_cranach_BT$Portrait_1, df_results_cranach_BT$Portrait_2))
+
+df_results_cranach_BT$Portrait_1 <- factor(df_results_cranach_BT$Portrait_1, levels = all_portraits)
+df_results_cranach_BT$Portrait_2 <- factor(df_results_cranach_BT$Portrait_2, levels = all_portraits)
+
+
+df_results_cranach_BT$Portrait_1 <- as.factor(df_results_cranach_BT$Portrait_1)
+df_results_cranach_BT$Portrait_2 <- as.factor(df_results_cranach_BT$Portrait_2)
+
+
+
+bt_model <- BTm(
+  cbind(win_1, win_2), 
+  player1 = Portrait_1, 
+  player2 = Portrait_2, 
+  data = df_results_cranach_BT
+)
+
+#or if you want a different category
+summary(update(bt_model, refcat = "Portrait_of_a_Lady"))
+```
+
+```{r}
+# Install and load the BradleyTerry2 package if necessary
+install.packages("BradleyTerry2")
+library(BradleyTerry2)
+
+# Prepare the data
+data <- data.frame(
+  Portrait_1 = c("Portrait_of_Johann_Friedrich", "Portrait_of_Johann_Friedrich", 
+                 "Portrait_of_Johann_Friedrich", "Portrait_of_Martin_Luther", 
+                 "Portrait_of_Martin_Luther", "Portrait_of_a_Lady", 
+                 "Portrait_of_a_Lady", "Portrait_of_a_Lady", 
+                 "Portrait_of_a_Lady", "Portrait_of_a_Young_Girl"),
+  Portrait_2 = c("Portrait_of_Martin_Luther", "Portrait_of_a_Saxon_Princess", 
+                 "Portrait_of_a_Young_Girl", "Portrait_of_a_Saxon_Princess", 
+                 "Portrait_of_a_Young_Girl", "Portrait_of_Johann_Friedrich", 
+                 "Portrait_of_Martin_Luther", "Portrait_of_a_Saxon_Princess", 
+                 "Portrait_of_a_Young_Girl", "Portrait_of_a_Saxon_Princess"),
+  win_1 = c(8, 8, 1, 10, 4, 17, 16, 11, 10, 14),
+  win_2 = c(10, 10, 17, 8, 14, 1, 2, 7, 8, 4)
+)
+
+# Combine all portrait names into a single vector to ensure factor levels are consistent
+all_portraits <- unique(c(data$Portrait_1, data$Portrait_2))
+
+# Convert Portrait_1 and Portrait_2 to factors with identical levels
+data$Portrait_1 <- factor(data$Portrait_1, levels = all_portraits)
+data$Portrait_2 <- factor(data$Portrait_2, levels = all_portraits)
+
+# Verify that both columns are factors with identical levels
+stopifnot(identical(levels(data$Portrait_1), levels(data$Portrait_2)))
+
+# Fit the Bradley-Terry model
+bt_model <- BTm(
+  cbind(win_1, win_2), 
+  player1 = Portrait_1, 
+  player2 = Portrait_2, 
+  data = data
+)
+
+# Summarize the model results
+summary(bt_model)
+
+
+
+```
+
+```{r}
+
+# distributions <- function(n_teams, district_name, avg, std){
+# 
+# distributions_list <- list()
+#   
+# for(i in 1 :n_teams){
+#   
+# distributions_list[[i]] <-  
+#   
+#              data.frame(scores = rnorm(n_teams, avg[i], std ),
+#              ids = paste0(district_name, "_", 1:length(n_teams)), 
+#              disctrict = rep(district_name,length(n_teams) )
+#              
+#              
+#              
+#   )
+# }
+# }
+# test <- distributions(10, "A", seq(from = 5, to = 12, length.out = 10), 1)
+
+n_per_group <- 5
+grps <- LETTERS[1:n_per_group]
+avgs <- seq(10, 20, length.out = n_per_group)
+std <- seq(2, 3, length.out = n_per_group)
+distributions <- list()
+for(i in 1:length(avgs)){
+  
+distributions[[i]] <- rnorm(n_per_group, avgs[i], std)
+
+
+
+
+  
+}
+
+names(distributions) <- grps
+test <- data.frame(do.call(rbind, distributions))
+test$group <- grps
+test_long <- pivot_longer(test, cols = starts_with("X"), names_to = "groups", values_to = "score")
+test_long$id <- paste0(test_long$group, "_", test_long$groups)
+ 
+test_expanded <- expand.grid(school_X = test_long$id, school_Y = test_long$id)
+
+test_expanded <- test_expanded %>% 
+  filter(school_X != school_Y)
+
+test_winners <- test_expanded %>% 
+  left_join(test_long, by = c("school_X" = "id")) %>%
+  rename(score_X = score) %>%
+  left_join(test_long, by = c("school_Y" = "id")) %>%
+  rename(score_Y = score) %>%
+  mutate(
+    win_1 = ifelse(score_X > score_Y, 1, 0),
+    win_2 = ifelse(score_Y > score_X, 1, 0)
+  ) %>%
+  select(school_X, school_Y, win_1, win_2)
+
+test_winners <- test_winners %>% 
+  filter(row_number() %% 2 == 1)
 
 ```
 
