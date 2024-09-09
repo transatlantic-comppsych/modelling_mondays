@@ -1,0 +1,363 @@
+---
+title: "Hierarchical models (LMEs)"
+format: html
+editor: visual
+---
+
+# Introduction
+
+Experimental data often contain 'clusters'; these are natural groups (e.g. testing sites, subjects, countries) where observations within each cluster tend to be more similar to one another than those in other clusters. Ignoring this grouped structure of the data violates the assumption of independent observations of simple linear regression, which can lead to biased estimates and unreliable statistical inferences.
+
+This week we will explore hierarchical linear models using data from 10 different schools. The goal is to understand how study hours affect test scores, accounting for both school-specific differences and overall trends. We will fit models using three approaches: complete pooling, no pooling, and hierarchical modeling with random intercepts and slopes.
+
+## Simulating Hierarchical School Data
+
+We'll simulate test scores from 10 different schools, where each school has its own intercept (baseline test score) and slope (effect of study hours on test scores). Each student's test score is influenced by how many hours they studied, with some noise added to the data.
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(lme4)
+library(tibble)
+library(truncnorm)
+library(patchwork)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Parameters
+n_schools <- 10  # Number of schools
+n_students <- 100  # Students per school
+
+mu_study_hours <- seq(8, 2, length.out = n_schools)  # Schools with higher average study hours
+mu_test_scores <- seq(50, 120, length.out = n_schools)  # Schools with higher average test scores
+
+sigma_beta_0 <- 10  # Std dev of intercepts within schools
+mu_beta_1 <- 3  # Average slope for study hours
+sigma_beta_1 <- 1  # Std dev of slopes (to ensure positive slopes within schools)
+sigma_y <- 10  # Std dev of test scores
+
+# Simulate data for each school
+data <- data.frame()
+for (i in 1:n_schools) {
+  # Simulate study hours for each student in the school
+  study_hours <- rtruncnorm(n_students, a = 0, b = Inf, mean = mu_study_hours[i], sd = 1)
+  
+  # Simulate school-specific intercept (baseline test score)
+  beta_0 <- rnorm(1, mean = mu_test_scores[i], sd = sigma_beta_0)
+  
+  # Simulate school-specific slope (effect of study hours)
+  beta_1 <- rnorm(1, mean = mu_beta_1, sd = sigma_beta_1)
+  
+  # Generate test scores
+  test_scores <- beta_0 + beta_1 * study_hours + rnorm(n_students, sd = sigma_y)
+  
+  # Combine school data into the main data frame
+  school_data <- data.frame(school = factor(i), study_hours = study_hours, test_scores = test_scores)
+  data <- rbind(data, school_data)
+}
+
+
+```
+
+### Explanation
+
+In this dataset:
+
+-   We have 10 schools, each with 100 students.
+
+-   The intercept (`beta_0`) for each school represents the baseline test score (with 0 study hours), varying by school.
+
+-   The slope (`beta_1`) represents the effect of study hours on test scores, which may differ across schools.
+
+-   Each student's test score is influenced by their study hours and school-specific factors, with some added noise to represent unobserved variability.
+
+The first plot shows the relationship between study_hours and test_scores if we ignore the grouping structure. From this graph it looks like there is no relationship between the two variables. However, when we look at the second plot, we notice that the data is grouped and is showing a linear trend within each school.
+
+## Complete Pooling Model
+
+In the complete pooling model, we assume that all schools have the same intercept and slope, effectively ignoring the hierarchical structure.
+
+$$test\_scores_{i}​=β_0​+β_1​study\_hours_{i}​+ϵ_{i}​ $$
+
+where,
+
+-   $Y_i$ and $X_i$ represent subject $i$'s outcome (test_scores) and predictor variables (study_hours), respectively.
+
+-   $β_0​$ is the common or **fixed intercept** for all schools.
+
+-   $β_1​$ is the common or **fixed slope** for all schools.
+
+-   $ϵ_i​∼N(0,σ^2)$ represents the residual error.
+
+**Assumptions of the complete pooling model:**
+
+1.  The observations (test_scores) are normally distributed.
+
+2.  Observations are independent.
+
+3.  There is a linear relationship between the outcome and predictor variables.
+
+We can already see that this model is inappropriate as assumption 2 is being violated: the test scores of students in the same school are not independent.
+
+![](complete_pooling_model.png)
+
+```{r}
+complete_pooling_model_lm <- lm(test_scores ~ study_hours,
+  data = data)
+
+summary(complete_pooling_model_lm)
+# Extract the fixed effects (coefficients)
+fixed_effects <- coef(complete_pooling_model_lm)
+
+# Extract the effect of 'study_hours' on 'test_scores'
+study_hours_effect <- fixed_effects["study_hours"]
+
+# Visualize complete pooling model
+ggplot(data, aes(x = study_hours, y = test_scores)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  # Plot the regression line using the lm coefficients
+  geom_abline(intercept = fixed_effects["(Intercept)"],
+              slope = fixed_effects["study_hours"],
+              color = "red") +
+  labs(title = "Complete Pooling Model", x = "Study Hours", y = "Test Scores") +
+  theme_minimal() +
+  # Annotate the correlation using the slope of the regression line (study_hours_effect)
+  annotate("text", x = Inf, y = -Inf, 
+           label = sprintf("Effect of Study Hours: %.2f", study_hours_effect),
+           hjust = 1.1, vjust = -0.5, color = "black", size = 5, fontface = "italic") 
+
+
+
+# Vizualize the relationship per school 
+ggplot(data, aes(x = study_hours, y = test_scores, color = school)) +
+  geom_point(alpha = 0.5) +
+  ggtitle("Relationship Between Study Hours and Test Scores")
+
+```
+
+### Explanation
+
+The complete pooling model assumes all schools have the same relationship between study hours and test scores. The red line represents the single fitted linear relationship across all students, ignoring school-specific differences.
+
+It is quite unexpected the there would be a negative relationship between study_hours and test_scores.
+
+From the second plot we can begin to understand what is going on. The data is clustered in groups (i.e. schools), and therefore observations from different schools should not be pooled together. Let's see what happens when we fit a separate linear regression model for each school.
+
+## No Pooling Model
+
+The no pooling model fits a separate linear model for each school, treating the schools independently.
+
+$$test\_scores_{ij}​=β_{0j}​+β_{1j}​study\_hours_{ij}​+ϵ_{ij}$$
+
+where:
+
+-   $Y_i$ and $X_i$ represent the outcome (test_scores) and predictor variables (study_hours), respectively, for subject $i$ from school $j$.
+
+-   $β_{0j}$ and $β_{1j}$ ​ are the intercept and slope for school j.
+
+-   $ϵ_{ij}​∼N(0,σ^2)$ represents the residual error.
+
+**Assumptions of the no pooling model:**
+
+1.  The observations (test_scores) are normally distributed.
+
+2.  Every school's model is fit independently of the other schools; there are no common parameters between schools (except from the standard deviation which is the same for all schools).
+
+3.  There is a linear relationship between the outcome and predictor variables. ![](no_pooling_model.png)
+
+```{r}
+# Initialize a list to store the models
+school_lm_models <- list()
+
+# Get unique schools
+unique_schools <- unique(data$school)
+
+
+# Loop over each school
+for (school in unique_schools) {
+  # Subset the data for the current school
+  school_data <- data[data$school == school, ]
+   
+  # Run the  linear regression for this school's data
+  model <- lm(test_scores ~ study_hours, data = school_data)
+  
+  # Store the model in the list, using the school name as the key
+  school_lm_models[[school]] <- model
+}
+
+# Access the models for each school
+school_lm_models[['School A']]  # Example of accessing a specific school's model
+
+# To view summaries for each model
+for (school in unique_schools) {
+  cat("\n\nSummary for", school, ":\n")
+  print(summary(school_lm_models[[school]]))
+}
+
+# Plot the results
+ggplot(data, aes(x = study_hours, y = test_scores, color = factor(school))) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~school) +
+  geom_smooth(method = "lm", se = FALSE) +  # Adds a regression line without confidence interval shading
+  labs(title = "No Pooling LME Model", x = "Study Hours", y = "Test Scores") +
+  theme_minimal()
+```
+
+### Explanation
+
+The no pooling model fits separate linear regressions for each school, capturing individual school trends. The plot shows distinct linear fits for each school, but without sharing any information between them.
+
+One problem with the no pooling model is that it cannot be generalized to a group outside of our sample. It assumes, in other words, that the relationship between study hours and test scores in one school can tell us nothing about this relationship in another school which is 'under-utilizing' the data.
+
+### Note
+
+Before we fit any other model, lets see what happens to our overall model when we add school as a co-variate.
+
+```{r}
+model_school_covariate <- lm(test_scores ~ study_hours + factor(school), data = data) 
+summary(model_school_covariate)
+```
+
+**Interpretation:**
+
+**Intercept:** the average test scores of students in school 1 when study hours = 0.
+
+**study_hours:** the effect of study_hours on test_scores when controlling for differences in mean test_scores across schools.
+
+**schoolX**: the difference in average test_scores between school 1 and schoolX, when controlling for study hours.
+
+Lets see what happens when we add school as an interaction term.
+
+```{r}
+model_school_interaction<- lm(test_scores ~ study_hours*factor(school), data = data)
+summary(model_school_interaction)
+```
+
+**Interpretation:**
+
+**Intercept:** the average test scores of students in school 1 when study hours = 0.
+
+**study_hours:** the effect of study_hours on test_scores in school 1.
+
+**schoolX**: the difference in baseline test_scores when study_hours = 0 between school 1 and school X.
+
+**study_hours:schoolX** :the difference in the slope of the relationship between study_hours and test_scores between school 1 and school X.
+
+## 
+
+## Hierarchical Model with Random Intercepts and Slopes
+
+Now we'll fit a hierarchical LME model that allows each school to have its own intercept and slope, but the group-level parameters are drawn from a common distribution. This model strikes a balance between the complete pooling and no pooling approaches.
+
+$$test\_scores_{ij}​=β_{0j}​+β_{1j}​study\_hours_{ij}​+ϵ_{ij}​$$
+
+where:
+
+-   $β_{0j}​∼N(μ_{β_0}​​,σ_{β_0}​​)$
+
+-   $β_{1j}​∼N(μ_{β_1}​​,σ_{β_1​}​)$
+
+-   $ϵ_{ij​}∼N(0,σ^2)$
+
+#### **Or another way to think about it,**
+
+$$test\_scores_{ij}​=(β_0 + b_{0j})​+(β_1+ b_{ij})​study\_hours_{ij}​+ϵ_{ij}​ $$
+
+-   $Y_i$ and $X_i$ represent the outcome (test_scores) and predictor variables (study_hours), respectively, for subject $i$ from school $j$.
+
+-   $β_0​$ is the common or **fixed intercept** for all schools.
+
+-   $b_{0j}$ is the **random intercept** for school *j*. It represents the deviation of the *j*-th school's intercept from $β_0$.
+
+-   $β_1​$ is the common or **fixed slope** for all schools.
+
+-   $b_{1j}$ is the **random slope** for school *j*. It represents the deviation of the *j*-th school's slope from $β_1$.
+
+-   $ϵij​∼N(0,σ^2)$ represents the residual error.
+
+**Assumptions of the hierarchical model:**
+
+1.  The observations (test_scores) are normally distributed.
+
+2.  Every school's model deviates to some extent from the grand mean and from the mean effect of study_hours. This implies that there is some between-school variability in the individual-level intercept and slope adjustments by school.
+
+3.  There is a linear relationship between the outcome and predictor variables.
+
+![](partial_pooling_model.png)
+
+```{r}
+# Fit hierarchical model with random intercepts and slopes using `lme4`
+hierarchical_model <- lmer(
+  test_scores ~ study_hours + (1 + study_hours | school),
+  data = data
+)
+
+# Summary of the model
+summary(hierarchical_model)
+
+# Extract fixed effects
+fixed_effects <- fixef(hierarchical_model)
+fixed_slope <- fixed_effects[2]
+fixed_intercept <- fixed_effects[1]
+
+
+# Visualization of hierarchical model with overall line
+ggplot(data, aes(x = study_hours, y = test_scores, color = school)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE, aes(group = school, color = school)) +
+  geom_abline(intercept=fixed_intercept, slope=fixed_slope, color="black", linetype="dashed", size=1) +
+  labs(title = "Hierarchical LME Model with Random Intercepts and Slopes",
+       x = "Study Hours",
+       y = "Test Scores") +
+  theme_minimal()+ annotate("text", x = Inf, y = Inf, label = paste("Fixed Effect Coefficient for Study Hours: ", round(fixed_slope, 2)),
+           hjust = 1.1, vjust = 1.5, size = 5, color = "black")
+```
+
+```{r}
+# Separate linear models for each school (No Pooling)
+data <- data %>%
+  group_by(school) %>%
+  mutate(no_pooling_predicted = predict(lm(test_scores ~ study_hours, data = cur_data())))
+
+
+# No Pooling Plot: Separate regression lines for each school (no influence from other schools)
+ggplot(data, aes(x = study_hours, y = test_scores, color = factor(school))) +
+  geom_point(alpha = 0.5) +
+  geom_line(aes(y = no_pooling_predicted), size = 1) +  
+  # Independent school lines
+  labs(title = "No Pooling: Separate Regressions per School", 
+       x = "Study Hours", 
+       y = "Test Scores") +
+  facet_wrap(~school) + 
+   theme_minimal() 
+
+
+# Extract fitted values from the hierarchical model
+data$partial_pooling_predicted <- predict(hierarchical_model, newdata = data)
+
+ # Example of creating fixed effect predictions
+fixed_effects <- data.frame(
+  study_hours = seq(min(data$study_hours), max(data$study_hours), length.out = 100),
+  test_scores = fixed_intercept + fixed_slope * seq(min(data$study_hours), max(data$study_hours), length.out = 100)
+)
+
+# Plot with fixed effects line
+ ggplot(data, aes(x = study_hours, y = test_scores, color = factor(school))) +
+  geom_point(alpha = 0.5) +  # Observed data points
+  geom_line(aes(y = partial_pooling_predicted), size = 1) +  # Shrinkage lines from random effects model
+  #geom_line(data = fixed_effects, aes(y = test_scores), linetype = "dashed", size = 1, color = "black") +  # Fixed effect line
+  labs(title = "Partial Pooling: Random Effects Model",
+       x = "Study Hours",
+       y = "Test Scores") +
+  facet_wrap(~school) +  # Separate plot per school
+  theme_minimal()
+ 
+
+```
+
+### Shrinkage
+
+When we compare the individual plots for the no pooling and partial pooling models we can see that the individual slopes are slightly different. This is due to '**Shrinkage':** a phenomenon whereby individual-level estimates are shrunk towards the mean estimates over the entire data. The more extreme the data from a given subject relative to the mean estimates from the data set, or the less data we have from a given subject, the greater the shrinkage.
