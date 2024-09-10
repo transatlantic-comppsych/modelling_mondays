@@ -8,7 +8,7 @@ editor: visual
 
 Experimental data often contain 'clusters'; these are natural groups (e.g. testing sites, subjects, countries) where observations within each cluster tend to be more similar to one another than those in other clusters. Ignoring this grouped structure of the data violates the assumption of independent observations of simple linear regression, which can lead to biased estimates and unreliable statistical inferences.
 
-This week we will explore hierarchical linear models using data from 10 different schools. The goal is to understand how study hours affect test scores, accounting for both school-specific differences and overall trends. We will fit models using three approaches: complete pooling, no pooling, and hierarchical modeling with random intercepts and slopes.
+This week we will explore hierarchical linear models using data from 10 different schools. The goal is to understand how **study hours** affect **test scores**, accounting for both school-specific differences and overall trends. We will fit models using three approaches: **complete pooling, no pooling**, and **hierarchical modeling** with **random intercepts** and **slopes**.
 
 ## Simulating Hierarchical School Data
 
@@ -74,8 +74,6 @@ In this dataset:
 
 -   Each student's test score is influenced by their study hours and school-specific factors, with some added noise to represent unobserved variability.
 
-The first plot shows the relationship between study_hours and test_scores if we ignore the grouping structure. From this graph it looks like there is no relationship between the two variables. However, when we look at the second plot, we notice that the data is grouped and is showing a linear trend within each school.
-
 ## Complete Pooling Model
 
 In the complete pooling model, we assume that all schools have the same intercept and slope, effectively ignoring the hierarchical structure.
@@ -83,8 +81,6 @@ In the complete pooling model, we assume that all schools have the same intercep
 $$test\_scores_{i}​=β_0​+β_1​study\_hours_{i}​+ϵ_{i}​ $$
 
 where,
-
--   $Y_i$ and $X_i$ represent subject $i$'s outcome (test_scores) and predictor variables (study_hours), respectively.
 
 -   $β_0​$ is the common or **fixed intercept** for all schools.
 
@@ -154,8 +150,6 @@ $$test\_scores_{ij}​=β_{0j}​+β_{1j}​study\_hours_{ij}​+ϵ_{ij}$$
 
 where:
 
--   $Y_i$ and $X_i$ represent the outcome (test_scores) and predictor variables (study_hours), respectively, for subject $i$ from school $j$.
-
 -   $β_{0j}$ and $β_{1j}$ ​ are the intercept and slope for school j.
 
 -   $ϵ_{ij}​∼N(0,σ^2)$ represents the residual error.
@@ -210,6 +204,8 @@ ggplot(data, aes(x = study_hours, y = test_scores, color = factor(school))) +
 
 The no pooling model fits separate linear regressions for each school, capturing individual school trends. The plot shows distinct linear fits for each school, but without sharing any information between them.
 
+Here we see that when we fit separate linear models for each school, there is a positive relationship between study_hours and test_scores, as expected. Compare this with the negative relationship we got from the overall model. This is called the **Simpson's paradox:** the phenomenon whereby a relationship seen in the overall model disappears or reverses when the data is divided into groups.
+
 One problem with the no pooling model is that it cannot be generalized to a group outside of our sample. It assumes, in other words, that the relationship between study hours and test scores in one school can tell us nothing about this relationship in another school which is 'under-utilizing' the data.
 
 ### Note
@@ -248,7 +244,7 @@ summary(model_school_interaction)
 
 ## 
 
-## Hierarchical Model with Random Intercepts and Slopes
+## Hierarchical Model with Random Intercepts and Slopes (Partial Pooling model)
 
 Now we'll fit a hierarchical LME model that allows each school to have its own intercept and slope, but the group-level parameters are drawn from a common distribution. This model strikes a balance between the complete pooling and no pooling approaches.
 
@@ -265,8 +261,6 @@ where:
 #### **Or another way to think about it,**
 
 $$test\_scores_{ij}​=(β_0 + b_{0j})​+(β_1+ b_{ij})​study\_hours_{ij}​+ϵ_{ij}​ $$
-
--   $Y_i$ and $X_i$ represent the outcome (test_scores) and predictor variables (study_hours), respectively, for subject $i$ from school $j$.
 
 -   $β_0​$ is the common or **fixed intercept** for all schools.
 
