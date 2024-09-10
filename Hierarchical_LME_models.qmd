@@ -58,8 +58,6 @@ for (i in 1:n_schools) {
   school_data <- data.frame(school = factor(i), study_hours = study_hours, test_scores = test_scores)
   data <- rbind(data, school_data)
 }
-
-
 ```
 
 ### Explanation
@@ -285,7 +283,7 @@ $$test\_scores_{ij}​=(β_0 + b_{0j})​+(β_1+ b_{ij})​study\_hours_{ij}​+
 ```{r}
 # Fit hierarchical model with random intercepts and slopes using `lme4`
 hierarchical_model <- lmer(
-  test_scores ~ study_hours + (1 + study_hours | school),
+  test_scores ~ study_hours + (1  + study_hours | school),
   data = data
 )
 
@@ -297,11 +295,19 @@ fixed_effects <- fixef(hierarchical_model)
 fixed_slope <- fixed_effects[2]
 fixed_intercept <- fixed_effects[1]
 
+# Extract fitted values from the hierarchical model
+data$partial_pooling_predicted <- predict(hierarchical_model, newdata = data)
+ # Example of creating fixed effect predictions
+fixed_effects <- data.frame(
+  study_hours = seq(min(data$study_hours), max(data$study_hours), length.out = 100),
+  test_scores = fixed_intercept + fixed_slope * seq(min(data$study_hours), max(data$study_hours), length.out = 100)
+)
+
 
 # Visualization of hierarchical model with overall line
 ggplot(data, aes(x = study_hours, y = test_scores, color = school)) +
   geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = FALSE, aes(group = school, color = school)) +
+  geom_line(aes(y = partial_pooling_predicted), size = 1) +  # Shrinkage lines from random effects model
   geom_abline(intercept=fixed_intercept, slope=fixed_slope, color="black", linetype="dashed", size=1) +
   labs(title = "Hierarchical LME Model with Random Intercepts and Slopes",
        x = "Study Hours",
@@ -331,7 +337,6 @@ ggplot(data, aes(x = study_hours, y = test_scores, color = factor(school))) +
 
 # Extract fitted values from the hierarchical model
 data$partial_pooling_predicted <- predict(hierarchical_model, newdata = data)
-
  # Example of creating fixed effect predictions
 fixed_effects <- data.frame(
   study_hours = seq(min(data$study_hours), max(data$study_hours), length.out = 100),
