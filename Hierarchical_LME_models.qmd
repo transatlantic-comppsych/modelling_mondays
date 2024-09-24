@@ -360,3 +360,249 @@ fixed_effects <- data.frame(
 ### Shrinkage
 
 When we compare the individual plots for the no pooling and partial pooling models we can see that the individual slopes are slightly different. This is due to '**Shrinkage':** a phenomenon whereby individual-level estimates are shrunk towards the mean estimates over the entire data. The more extreme the data from a given subject relative to the mean estimates from the data set, or the less data we have from a given subject, the greater the shrinkage.
+
+# Week 13: LME on time-series data
+
+This week we will look at how to fit an LME on time-series data (aka repeated measures or longitudinal data).
+
+Let's start by loading the Cherry blossom dataset from the bayesrules() package. This dataset contains the running times (in minutes) for 36 runners in the annual 10-mile Cherry Blossom race in Wadhington, D.C. The runners are in their 50s or 60s and have competed multiple times.
+
+```{r}
+#install.packages("bayesrules")
+library(bayesrules)
+
+# Load data
+data(cherry_blossom_sample)
+running <- cherry_blossom_sample %>% 
+  select(runner, age, net)%>% 
+  na.omit()
+
+head(running)
+
+ggplot(running, aes(x = runner, y = net)) + 
+  geom_boxplot()
+
+```
+
+### Complete pooling model
+
+In the complete pooling model, we assume that all runners have the same intercept and slope, effectively ignoring the hierarchical structure.
+
+$$running\_times_{i}​=β_0​+β_1​age_{i}​+ϵ_{i}​ $$
+
+where,
+
+-   $β_0​$ is the common or **fixed intercept** for all runners.
+
+-   $β_1​$ is the common or **fixed slope** for all runners.
+
+-   $ϵ_i​∼N(0,σ^2)$ represents the residual error.
+
+**Assumptions of the complete pooling model:**
+
+1.  The observations (running_times) are normally distributed.
+
+2.  Observations are independent.
+
+3.  There is a linear relationship between the outcome and predictor variables.
+
+```{r}
+# Complete pooling model: treating all runners as a single group
+complete_pooling_model <- lm(net ~ age, data = running)
+
+# Summary of the complete pooling model
+summary(complete_pooling_model)
+
+
+ggplot(running, aes(y = net, x = age)) + 
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE, color= 'red')
+
+```
+
+**Interpretation**:
+
+-   **Intercept:** The average running time at age 0 (clearly not a useful estimate).
+
+-   **age:** The average difference in running times each year.
+
+This estimate of the age coefficient β1 suggests that running times tend to increase by a mere 0.27 minutes for each year in age. Further, this is not a statistically significant increase. This is unlikely to be true, as our intuition tells us that as people age, they get slower at running.
+
+### No Pooling Model
+
+The no pooling model fits a separate linear model for each runner, treating the runners independently.
+
+$$running\_times_{ij}​=β_{0j}​+β_{1j}​age_{ij}​+ϵ_{ij}$$
+
+where:
+
+-   $β_{0j}$ and $β_{1j}$ ​ are the intercept and slope for runner j.
+
+-   $ϵ_{ij}​∼N(0,σ^2)$ represents the residual error.
+
+**Assumptions of the no pooling model:**
+
+1.  The observations (running_times) are normally distributed.
+
+2.  Every runner's model is fit independently of the other runners; there are no common parameters between runners (except from the standard deviation which is the same for all runners).
+
+3.  There is a linear relationship between the outcome and predictor variables.
+
+```{r}
+# Initialize a list to store the modelsr
+runner_lm_models <- list()
+
+# Get unique runners
+unique_runners <- unique(running$runner)
+
+
+# Loop over each runner
+for (runner in unique_runners) {
+  # Subset the data for the current runner
+  running_data <- running[running$runner == runner, ]
+   
+  # Run the  linear regression for this runner's data
+  model <- lm(net ~ age, data = running_data)
+  
+  # Store the model in the list, using the runner name as the key
+  runner_lm_models[[runner]] <- model
+}
+
+# Access the models for each runner
+runner_lm_models[['Runner 1']]  # Example of accessing a specific runner's model
+
+# To view summaries for each model
+for (runner in unique_runners) {
+  cat("\n\nSummary for", runner, ":\n")
+  print(summary(runner_lm_models[[runner]]))
+}
+
+# Plot the results
+ggplot(running, aes(x = age, y = net, color = factor(runner))) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~runner) +
+  geom_smooth(method = "lm", se = FALSE) +  # Adds a regression line without confidence interval shading
+  labs(title = "No Pooling LME Model", x = "Age", y = "Running Time") +
+  theme_minimal()
+```
+
+**Interpretation**:
+
+-   **Intercept:** The predicted running time for each runner at age 0.
+
+-   **age:** The difference in running times each year for each runner.
+
+**Problems with the no polling method:**
+
+1.  We cannot reliably generalize to groups runners those in our sample.
+
+2.  It assumes that data from one runner cannot tell us anything useful about another runner and thus ignores potentially valuable information. This is especially problematic when we have a small number of observations per runner.
+
+## Hierarchical Model with Random Intercepts and Slopes (Partial Pooling model)
+
+$$running\_times_{ij}​=β_{0j}​+β_{1j}​age_{ij}​+ϵ_{ij}​$$
+
+where:
+
+-   $β_{0j}​∼N(μ_{β_0}​​,σ_{β_0}​​)$
+
+-   $β_{1j}​∼N(μ_{β_1}​​,σ_{β_1​}​)$
+
+-   $ϵ_{ij​}∼N(0,σ^2)$
+
+#### **Or another way to think about it,**
+
+$$running\_times_{ij}​=(β_0 + b_{0j})​+(β_1+ b_{ij})​age_{ij}​+ϵ_{ij}​ $$
+
+-   $β_0​$ is the common or **fixed intercept** for all runners.
+
+-   $b_{0j}$ is the **random intercept** for runner *j*. It represents the deviation of the *j*-th runner's intercept from $β_0$.
+
+-   $β_1​$ is the common or **fixed slope** for all runners.
+
+-   $b_{1j}$ is the **random slope** for runner *j*. It represents the deviation of the *j*-th runner's slope from $β_1$.
+
+-   $ϵij​∼N(0,σ^2)$ represents the residual error.
+
+**Assumptions of the hierarchical model:**
+
+1.  The observations (running_times) are normally distributed.
+
+2.  Every runner's model deviates to some extent from the grand mean and from the mean effect of age. This implies that there is some between-runner variability in the individual-level intercept and slope adjustments by runner.
+
+3.  There is a linear relationship between the outcome and predictor variables.
+
+```{r}
+# Mixed effects model: allowing individual random effects for intercepts and slopes
+mixed_effects_model <- lmer(net ~ age + (1+ age | runner), data = running)
+
+# Summary of the mixed effects model
+summary(mixed_effects_model)
+
+# Extract fitted values from the hierarchical model
+running$partial_pooling_predicted <- predict(mixed_effects_model, newdata = running)
+# Extract fixed effects
+fixed_effects <- fixef(mixed_effects_model)
+fixed_slope <- fixed_effects[2]
+fixed_intercept <- fixed_effects[1]
+
+
+# Visualization of hierarchical model with overall line
+ggplot(running, aes(x = age, y = net, color = runner)) +
+  geom_point(alpha = 0.5) +
+  geom_line(aes(y = partial_pooling_predicted), size = 1) +  # Shrinkage lines from random effects model
+  geom_abline(intercept=fixed_intercept, slope=fixed_slope, color="black", linetype="dashed", size=1) +
+  labs(title = "Hierarchical LME Model with Random Intercepts and Slopes",
+       x = "Age",
+       y = "Running times") +
+  theme_minimal()+ annotate("text", x = Inf, y = Inf, label = paste("Fixed Effect Coefficient for age: ", round(fixed_slope, 2)),
+           hjust = 1.1, vjust = 1.5, size = 5, color = "black")
+
+```
+
+**Interpretation:**
+
+**Fixed effects**
+
+-   **Intercept:** The predicted average running time when age is 0.
+
+-   **age:** The average difference in running times each year.
+
+**Random effects**
+
+-   **Groups (runner)**: The random effects are grouped by runner.
+
+-   **Intercept**: This indicates the degree to which each runner's baseline performance (when age is 0) varies from the overall average intercept.
+
+-   **age**: This tells us how much the effect of age on running times differs for each runner.
+
+-   **Corr**: This shows the correlation between the random intercepts and slopes for runners. A positive correlation suggests that runners with higher baseline running times (higher intercepts) tend to show less decline in performance with age (smaller negative slope), while a negative correlation would suggest the opposite.
+
+**Residual Variance**
+
+-   **Residual**: This is the variance in running times that remains unexplained by the model. The standard deviation tells us the typical size of the residuals, indicating how much the observed running times deviate from the predicted running times on average.
+
+#### Visualize the shirnkage
+
+```{r}
+# Plot the no pooled graphs 
+ggplot(running, aes(x = age, y = net, color = factor(runner))) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~runner) +
+  geom_smooth(method = "lm", se = FALSE) +  # Adds a regression line without confidence interval shading
+  labs(title = "No Pooling Model", x = "Age", y = "Running Times") +
+  facet_wrap(~runner)+
+  theme_minimal()
+
+# Plot the partially polled graphs 
+ ggplot(running, aes(x = age, y = net, color = factor(runner))) +
+  geom_point(alpha = 0.5) +  # Observed data points
+  geom_line(aes(y = partial_pooling_predicted), size = 1) +  # Shrinkage lines from random effects model
+  labs(title = "Partial Pooling: Random Effects Model",
+       x = "Age",
+       y = "Running Times") +
+  facet_wrap(~runner) +  # Separate plot per school
+  theme_minimal()
+ 
+
+```
