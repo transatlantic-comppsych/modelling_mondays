@@ -492,7 +492,7 @@ ggplot(running, aes(x = age, y = net, color = factor(runner))) +
 
 -   **age:** The difference in running times each year for each runner.
 
-**Problems with the no polling method:**
+**Problems with the no pooling method:**
 
 1.  We cannot reliably generalize to groups runners those in our sample.
 
@@ -533,8 +533,10 @@ $$running\_times_{ij}​=(β_0 + b_{0j})​+(β_1+ b_{ij})​age_{ij}​+ϵ_{ij}
 3.  There is a linear relationship between the outcome and predictor variables.
 
 ```{r}
+library(lmerTest)
+
 # Mixed effects model: allowing individual random effects for intercepts and slopes
-mixed_effects_model <- lmer(net ~ age + (1+ age | runner), data = running)
+mixed_effects_model <- lmer(net ~ age + (1+ age| runner), data = running)
 
 # Summary of the mixed effects model
 summary(mixed_effects_model)
