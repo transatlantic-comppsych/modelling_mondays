@@ -608,3 +608,393 @@ ggplot(running, aes(x = age, y = net, color = factor(runner))) +
  
 
 ```
+
+## Week 14: Bayesian LME 
+
+### Load surprise pilot 21 data and get a random sample of 10 people
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(lme4)
+library(tibble)
+library(truncnorm)
+library(brms)
+library(rstan)
+
+set.seed(123)
+pilot_21_data <-read.csv("pilot_21_variables.csv")
+
+#Identify unique participants
+unique_participants <- unique(pilot_21_data$Random_ID)
+
+#Randomly sample 10 unique participants
+set.seed(123)  # Setting seed for reproducibility
+sampled_participant_ids <- sample(unique_participants, 10)
+
+#Extract trials corresponding to the sampled participants
+sampled_pilot_21_data <- pilot_21_data %>% 
+  filter(Random_ID %in% sampled_participant_ids)
+
+# Print sampled data
+print(sampled_pilot_21_data)
+
+```
+
+### Complete Pooling Model
+
+In the complete pooling model, we assume that all participants have the same intercept and slope, ignoring the hierarchical structure.
+
+$$
+Y_{i}|β_{0},β_1,σ ∼N(μ_i,σ^2)\ with\ μ_i=β_0 + β_1X_{i}
+$$
+
+$$Anxiety_{i}​=β_0​+β_1​PE_{i}​+ϵ_{i}​ $$
+
+where,
+
+-   $Y_i$ and $X_i$ represent participant $i$'s outcome (anxiety) and predictor variable (PE), respectively.
+
+-   $β_0​$ is the common or **fixed intercept** for all participants.
+
+-   $β_1​$ is the common or **fixed slope** for all participants.
+
+-   $ϵ_i​∼N(0,σ^2)$ represents the residual error.
+
+    **Priors**:
+
+-   $β_0​∼N(50,10)$
+
+-   $β_1∼N(0,5)$
+
+-   $σ∼Cauchy(0,2.5)$
+
+**Assumptions of the complete pooling model:**
+
+1.  The observations (anxiety ratings) are normally distributed.
+
+2.  Observations are independent.
+
+3.  There is a linear relationship between the outcome and predictor variables.
+
+![](complete_pooling_model.png)
+
+#### brms
+
+```{r}
+
+# Fit complete pooling model using `brms`
+complete_pooling_model <- brm(
+  Response_Ax ~ Response_SubjPE,
+  data = sampled_pilot_21_data,
+  family = gaussian(),
+  prior = c(
+    prior(normal(50, 10), class = Intercept),
+    prior(normal(0, 5.5), class = b),
+    prior(cauchy(0, 2.5), class = sigma)
+  ),
+  iter = 2000, warmup = 1000, chains = 4, cores = 2
+)
+
+# Summary of the complete pooling model
+summary(complete_pooling_model)
+fixed_effects <- fixef(complete_pooling_model)
+PE_effect <- fixed_effects["Response_SubjPE", "Estimate"]
+
+
+# Visualize complete pooling model
+ggplot(sampled_pilot_21_data, aes(x = Response_SubjPE, y = Response_Ax)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_abline(intercept = fixef(complete_pooling_model)["Intercept", "Estimate"],
+              slope = fixef(complete_pooling_model)["Response_SubjPE", "Estimate"],
+              color = "red") +
+  labs(title = "Complete Pooling Bayesian Model", x = "Prediction Error", y = "Anxiety") +
+  theme_minimal()+
+  annotate("text", x = Inf, y = -Inf, label = sprintf("Correlation: %.2f", PE_effect),
+           hjust = 1.1, vjust = -0.5, color = "black", size = 5, fontface = "italic") 
+
+```
+
+This positive correlation between PE and Anxiety suggests that the more positive the PE (i.e. the more positively surprising the outcome) the more anxious people get. This is highly counter-intuitive, I think. Let's see what happens when we model the hierarchical structure of the data.
+
+### Partial Pooling/Hierarchical Bayesian Model with Random Intercepts
+
+Now we'll fit a hierarchical Bayesian model that allows each participant to have their own intercept but the group-level parameters are drawn from a common distribution.
+
+$$Anxiety_{ij}​=β_{0j}​+β_{1}​PE_{ij}​+ϵ_{ij}​$$
+
+where:
+
+-   $β_{0j}​∼N(μ_{β_0}​​,σ_{β_0}​​)$
+
+-   $β_1​$ is the common or fixed slope for all participants.
+
+-   $ϵ_{ij​}∼N(0,σ^2)$
+
+**Priors**:
+
+$μ_{β_0}​​∼N(50,10)$
+
+$σ_{β0}​​∼Cauchy(0,2.5)$
+
+$β_1∼N(0,5)$
+
+$σ∼Cauchy(0,2.5)$
+
+### **Or another way to think about it,**
+
+$$
+Y_{ij}|β_{0j},β_{1},σ_y ∼N(μ_{ij},σ^2_y)\ with\ μ_{ij}=(β_0 + b_{0j})​+β_1​X_{ij}
+$$
+
+$$Anxiety_{ij}​=(β_0 + b_{0j})​+β_1​study\_hours_{ij}​+ϵ_{ij}​ $$
+
+-   $Y_i$ and $X_i$ represent the outcome (anxiety) and predictor variable (prediction error), respectively, for trial $i$ from participant $j$.
+
+-   $β_0​$ is the common or **fixed intercept** for all participants.
+
+-   $b_{0j}$ is the **random intercept** for participant *j*. It represents the deviation of the *j*-th participant's intercept from $β_0$.
+
+-   $β_1​$ is the common or **fixed slope** for all participants.
+
+-   $ϵ_{ij}​∼N(0,σ^2)$ represents the residual error.
+
+    **Priors**:
+
+-   $β_0​∼N(50,10)$
+
+-   $b_{0j}∼N(0,σ_{0j})$
+
+-   $β_1∼N(0,5)$
+
+-   $σ_{0j} ∼Cauchy(0,2.5)$
+
+-   $σ_y∼Cauchy(0,2.5)$
+
+**Assumptions of the hierarchical model:**
+
+1.  The observations (anxiety) are normally distributed.
+
+2.  Every participant's model deviates to some extent from the grand mean. This implies that there is some between-subject variability in the individual-level intercept adjustments.
+
+3.  There is a linear relationship between the outcome and predictor variables.
+
+![](partial_pooling_model.png)
+
+#### brms
+
+```{r}
+#brms
+library(brms)
+
+fit_brms_lme <- brm(
+  Response_Ax ~ Response_SubjPE + (1 | Random_ID),
+  data = sampled_pilot_21_data,
+  family = gaussian(),
+  prior = c(
+    prior(normal(0, 1), class = "b", coef = "Response_SubjPE"),  # Using normal priors throughout here
+    prior(cauchy(0, 2.5), class = "sigma"),# Prior for the error term, the Cauchy distribution has some great properties with heavy tails and is quite robust
+    prior(cauchy(0, 2.5), class = "sd" , group= "Random_ID")
+  ),
+  iter = 2000,  # This is for the MCMC
+  chains = 4,
+  seed = 123
+)
+
+
+fit_brms_lme
+
+# These are now posterior distributions
+plot(fit_brms_lme)
+
+
+# Extracting the random effects
+random_effects <- ranef(fit_brms_lme)
+print(random_effects)
+
+# Optional: Extracting the random effects for Random_ID specifically
+random_effects_random_id <- random_effects$Random_ID
+print(random_effects_random_id)
+
+
+
+# Create new data for predictions based only on fixed effects
+new_data_fixed <- sampled_pilot_21_data %>%
+  distinct(Response_SubjPE) %>%
+  mutate(Random_ID = NA)  # For fixed effects, we set Random_ID to NA to ignore random effects
+
+# Get predictions for fixed effects only
+pred_fixed <- fitted(fit_brms_lme, newdata = new_data_fixed, re_formula = NA)  # re_formula = NA for fixed effects
+new_data_fixed$Response_Ax <- pred_fixed[, "Estimate"]
+
+# Get predictions including random effects
+pred_random <- fitted(fit_brms_lme, newdata = sampled_pilot_21_data)
+
+# Add these predictions back to the original data
+sampled_pilot_21_data$predicted_random <- pred_random[, "Estimate"]
+
+# Plot with ggplot
+ggplot() +
+  # Random effects: one line per Random_ID, colored by Random_ID
+  geom_line(data = sampled_pilot_21_data, aes(x = Response_SubjPE, y = predicted_random, group = Random_ID, color = as.factor(Random_ID)), 
+            alpha = 0.7) +
+  # Scatter plot of the raw data, points colored by Random_ID
+  geom_point(data = sampled_pilot_21_data, aes(x = Response_SubjPE, y = Response_Ax, color = as.factor(Random_ID)), 
+             alpha = 0.8) +
+  # Fixed effects: a single line (not colored by Random_ID)
+  geom_line(data = new_data_fixed, aes(x = Response_SubjPE, y = Response_Ax), 
+            color = "black", size = 1.2, linetype = "dashed") +
+  labs(
+    title = "Fixed and Random Effects Plot Colored by Random_ID",
+    x = "Response_SubjPE",
+    y = "Response_Ax",
+    color = "Random_ID"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+
+```
+
+Plot the individual regressions to compare with the LME
+
+```{r}
+
+# Fit individual linear models (lm) for each Random_ID
+lm_fits <- sampled_pilot_21_data %>%
+  group_by(Random_ID) %>%
+  do(model = lm(Response_Ax ~ Response_SubjPE, data = .))
+
+# Extract the predicted values for each Random_ID
+predictions <- lm_fits %>%
+  rowwise() %>%
+  do({
+    data.frame(
+      Response_SubjPE = .$model$model$Response_SubjPE,
+      Random_ID = .$Random_ID,
+      predicted = predict(.$model),
+      Response_Ax = .$model$model$Response_Ax
+    )
+  }) %>%
+  ungroup()
+
+# Now, plot the individual regression lines and points for each Random_ID
+ggplot(predictions, aes(x = Response_SubjPE, y = Response_Ax, color = as.factor(Random_ID))) +
+  # Add individual regression lines for each Random_ID
+  geom_line(aes(y = predicted, group = Random_ID), alpha = 0.7) +
+  # Add the actual data points for each Random_ID
+  geom_point(aes(y = Response_Ax), alpha = 0.8) +
+  labs(
+    title = "Individual Linear Models by Random_ID",
+    x = "Response_SubjPE",
+    y = "Response_Ax",
+    color = "Random_ID"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+```
+
+#### stan
+
+```{r}
+#stan
+library(dplyr)
+library(rstan)
+# Prepare data for Stan
+stan_data <- list(
+  N = nrow(sampled_pilot_21_data),
+  K = 1,  # Number of predictors
+  J = length(unique(sampled_pilot_21_data$Random_ID)),
+  y = sampled_pilot_21_data$Response_Ax,
+  x = sampled_pilot_21_data$Response_SubjPE,
+  participant = as.numeric(factor(sampled_pilot_21_data$Random_ID))
+)
+
+stan_model_code <- "
+data {
+  int<lower=0> N;         // number of observations
+  int<lower=0> K;         // number of predictors
+  int<lower=1> J;         // number of participants
+  vector[N] y;            // response variable
+  vector[N] x;            // predictor variable
+  int<lower=1,upper=J> participant[N];  // participant ID for each observation
+}
+
+parameters {
+  real alpha;             // intercept
+  real beta;              // slope
+  real<lower=0> sigma;    // error scale
+  vector[J] u;            // random effects
+  real<lower=0> tau;      // random effect standard deviation
+}
+
+model {
+  // Priors
+  alpha ~ normal(50, 10);
+  beta ~ normal(0, 1);
+  sigma ~ cauchy(0, 2.5);
+  tau ~ cauchy(0, 2.5);
+
+  // Likelihood
+  for (n in 1:N) {
+    y[n] ~ normal(alpha + beta * x[n] + u[participant[n]], sigma);
+  }
+
+  // Random effects
+  u ~ normal(0, tau);
+}
+"
+# Compile the model
+stan_model <- stan_model(model_code = stan_model_code)
+
+# Fit the model
+fit <- sampling(stan_model, data = stan_data, iter = 2000, chains = 4, seed = 123)
+
+# Print the fit summary
+print(fit)
+
+# Extract posterior samples
+posterior_samples <- extract(fit)
+
+# Calculate mean and 95% credible intervals for random effects (deviations)
+u_means <- colMeans(posterior_samples$u)
+u_lower <- apply(posterior_samples$u, 2, quantile, probs = 0.025)
+u_upper <- apply(posterior_samples$u, 2, quantile, probs = 0.975)
+
+# Calculate the intercept mean
+alpha_mean <- mean(posterior_samples$alpha)
+
+# Create a data frame for plotting
+deviations_df <- data.frame(
+  participant = unique(sampled_pilot_21_data$Random_ID),
+  mean_deviation = u_means + alpha_mean,  # Adjust deviations
+  lower_bound = u_lower + alpha_mean,     # Adjust lower bound
+  upper_bound = u_upper + alpha_mean      # Adjust upper bound
+)
+
+# Plot the deviations with intercept line
+ggplot(deviations_df, aes(x = participant, y = mean_deviation)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = lower_bound, ymax = upper_bound), width = 0.2) +
+  geom_hline(yintercept = alpha_mean, linetype = "dashed", color = "red") +  # Intercept line
+  labs(title = "Individual Deviations from Intercept",
+       x = "Participant ID",
+       y = "Deviation from Intercept") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  annotate("text", x = 1, y = alpha_mean + 1, label = paste("Intercept =", round(alpha_mean, 2)), color = "red", hjust = 0)
+```
+
+#### LME
+
+Let's compare our results from the Bayesian hierarchical model to the LME model.
+
+```{r}
+
+lme_model <- lmer(Response_Ax ~Response_SubjPE + (1 | Random_ID), data = sampled_pilot_21_data)
+summary(lme_model)
+```
