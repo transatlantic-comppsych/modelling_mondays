@@ -958,7 +958,7 @@ fit <- sampling(stan_model, data = stan_data, iter = 2000, chains = 4, seed = 12
 print(fit)
 
 # Extract posterior samples
-posterior_samples <- extract(fit)
+posterior_samples <- rstan::extract(fit)
 
 # Calculate mean and 95% credible intervals for random effects (deviations)
 u_means <- colMeans(posterior_samples$u)
@@ -989,6 +989,20 @@ ggplot(deviations_df, aes(x = participant, y = mean_deviation)) +
   annotate("text", x = 1, y = alpha_mean + 1, label = paste("Intercept =", round(alpha_mean, 2)), color = "red", hjust = 0)
 ```
 
+**Interpretation**
+
+-   **alpha:** The fixed intercept; the average anxiety across participants when PE=0
+
+-   **beta:** The fixed slope; the average drop in anxiety which every point increase in PE.
+
+-   **sigma:** The standard deviation of anxiety ratings across participants.
+
+-   **u\[X\]:** Participant X's deviation from the fixed intercept.
+
+-   **tau:** The standard deviation in intercepts across participants.
+
+-   **lp\_\_** : log_posterior = log_likelihood + log_prior
+
 #### LME
 
 Let's compare our results from the Bayesian hierarchical model to the LME model.
@@ -998,3 +1012,5 @@ Let's compare our results from the Bayesian hierarchical model to the LME model.
 lme_model <- lmer(Response_Ax ~Response_SubjPE + (1 | Random_ID), data = sampled_pilot_21_data)
 summary(lme_model)
 ```
+
+We see that the fixed slope for PE in the hierarchical model is now negative. Therefore the more negatively surprising the feedback, the more anxious participants report to feel. This is another example of the **Simpson's paradox.**
