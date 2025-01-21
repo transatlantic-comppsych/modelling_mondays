@@ -1,0 +1,190 @@
+---
+title: "comp_tues_ancova"
+author: "Raphaelle"
+format: html
+editor: visual
+---
+
+## (Mis)understanding Analysis of Covariance
+
+Based on the paper by Miller & Chapman (2001).
+
+```{r, echo=FALSE}
+#load packages
+library(tidyverse)
+library(ggplot2)
+
+set.seed(1997)
+```
+
+### Let's start with an example
+
+A university has changed their caterer in the past year and they want to examine how this new meal plan has affected their students' weight and whether effects are different by sex.
+
+```{r}
+
+#we will simulate some data
+
+N <- 1000
+ 
+b <- 10
+l <- 50
+u <- 70
+girls1 <- runif(N, l, u) #weight 
+boys1 <- girls1 + b #
+ 
+beta1 <- 0.4
+girls0 <- (1 - beta1) * mean(girls1)
+boys0 <- mean(boys1) - beta1 * (mean(girls1) + b)
+ 
+sds <- 1
+girls2 <- girls0 + beta1 * girls1 + rnorm(N, sd=sds)
+boys2 <- boys0 + beta1 * boys1 + rnorm(N, sd=sds)
+```
+
+```{r}
+
+data <- data.frame(initial = c(girls1, boys1), final = c(girls2, boys2))
+data$dif <- data$final - data$initial
+data$sex = c(rep(0, N), rep(1, N))
+ 
+ggplot(data = data, aes(initial, final, color = factor(sex))) +
+  geom_point() + stat_smooth(method = "lm")  +
+  geom_abline(intercept = 0, slope = 1) +
+  ggtitle("Initial and Final Weight for Girls and Boys") + theme_bw()
+
+```
+
+The findings of the first statistician are obtained through a simple regression analysis that, taking as a response variable the difference between weights, induces a coefficient of regression equal to zero for the variable sex, which indicates that there are no significant differences in the weight difference between men and women.
+
+```{r}
+summary(lm(dif ~ sex, data))
+```
+
+The findings of the second statistic are obtained through a covariance analysis (in this case, sticking to a multiple regression approach as it is simpler to visualise), taking as response variable the final weight and covariates are sex and the initial weight of the individual. This method induces a coefficient of regression equal to 5.95 which implies that there is significant difference between the final weight of the people, according to sex.
+
+```{r}
+summary(lm(dif ~ sex + initial, data))
+```
+
+This is quite misleading, isn't it?
+
+![](images/clipboard-1749481078.png){fig-align="center"}
+
+Although it's used in the paper to show how ANCOVA can lead to finding meaningful effects (although many argue this is the wrong way to go about this analysis), it is actually a broader and fundamental problem of causal inference which we won't go into now, but is worth looking into e.g. for those who rely on change scores in observational studies, this research by Tennant et al. is interesting: <https://arxiv.org/abs/2302.01822>
+
+### Understanding Analysis of Covariance 
+
+Before we try to understand any misunderstandings, let's go back to the basics and look at what an AN(C)OVA does.
+
+Analysis of Variance is used to compare the means of two or more groups to determine whether the differences between group means are statistically significant. Mathematically, it compares the amount of between-group variability (due to differences in group means) to within-group variability (due to random variation).
+
+*Total sum of squares (SST)* measures the overall variability in the data by comparing each observation to the grand mean:
+
+$$
+SST = \sum_{i=1}^{N} (y_i - \bar{y})^2
+$$
+
+Between-group sum of squares (SSB) measures how much variability is due to differences between the group means and the overall mean:
+
+$$
+SSB = \sum_{j=1}^{k} n_j (\bar{y}_j - \bar{y})^2
+$$
+
+Within-group sum of squares (SSW) measures the variability within each group comparing individual observations to their respective group means:
+
+$$
+SSW = \sum_{j=1}^{k} \sum_{i=1}^{n_j} (y_{ij} - \bar{y}_j)^2
+$$
+
+The F-statistic is the ratio between the variability between groups to the variability within groups - with a large F indicating the variability between group means is much larger than the variability within groups.
+
+```{r}
+#here I simulated RCT data with anxiety as outcome and treatment type as groups
+
+# Simulate data for a psychology RCT
+set.seed(123)
+data <- data.frame(
+  therapy = rep(c("CBT", "Psychodynamic", "Mindfulness"), each = 15),  # 3 therapy groups
+  anxiety_score = c(rnorm(15, mean = 20, sd = 5),  # CBT group
+                    rnorm(15, mean = 22, sd = 5),  # Psychodynamic group
+                    rnorm(15, mean = 18, sd = 5))  # Mindfulness group
+)
+
+# Perform ANOVA
+anova_result <- aov(anxiety_score ~ therapy, data = data)
+
+# Display results
+summary(anova_result)
+
+
+```
+
+ANOVA can also be understood within the general linear model. In fact, when you perform an ANOVA in R, aov will fit the following linear model, just like lm would do:
+
+$$
+y_{ij} = \mu + \tau_j + \epsilon_{ij}
+$$
+
+Where:
+
+-   $y_{ij}$​: Observation $i$ in group $j$,
+
+-   $μ$: Overall mean,
+
+-   $τ_j$​: Effect of group $j$,
+
+-   $epsilon_{ij} Residual error (assumed to be normally distributed with mean 0 and constant variance σ2\sigma^2σ2).
+
+Each level of the categorical variable is described by its own slope and intercept.
+
+```{r}
+#fitting an anova using lm
+
+lm_result <- lm(anxiety_score ~ therapy, rct_data)
+
+# Display the summary of the linear model
+summary(lm_result)
+
+```
+
+In addition to testing if the response variable differs for at least one level of the categorical variable, Analysis of Covariance also tests whether the response variable might be influenced by its relationship with the continuous variable (i.e. the covariate), and by any differences between group levels in the way that the continuous variable influences the response (i.e. the interaction).
+
+```{r}
+# for example, let's say we want to "control for" the effect of the sessions attended on the
+
+ancova_model <- lm(post_anxiety ~ therapy + baseline_anxiety + age, rct_data)
+
+summary(ancova_model)
+
+```
+
+### The problem with ANCOVA (or how it's used)
+
+![](venn_diagram_ancova.png){fig-align="center"}
+
+What the ANCOVA does right: when the GRP variable is not associated with the covariate, removing a portion of unrelated variance in the DV, improving the overall power of the test.
+
+When groups are randomly assigned, removing the variance associated with COV will not alter GRP. When GRP and COV do share variance, removing variance associated with COV will also alter GRP in potentially problematic ways.
+
+What the investigator may view as the conventional F test of GRP is actually, instead an evaluation of the variance shared by GRP_residual and DV_residual.
+
+### Going back to Lord's Paradox
+
+The central problem is that often one does not know what GRP_residual represents when COV and GRP are related. GRP_res is not a good measure of the construct that GRP is intended to measure.
+
+If you use initial weight as a covariate, it will look like that there is a meaningful differential effect of diet on boys and girls. However, the two selected subgroups are not representative of the larger groups of boys and girls. In effect, the two levels of the gender effect no longer represent the samples of boys and girls in the original analysis.
+
+What this statistician observed is merely an example of the principle of regression toward the mean. By selecting subsets of boys and girls matched on weight, the statistician will have selected boys weighing less than the boys' mean and girls weighing more than the girls' mean.
+
+Because gender and weight are confounded (correlated) to begin with, there is no statistical means to unconfound them in these examples.
+
+![](images/clipboard-3922176577.png){fig-align="center" width="531"}
+
+### So, are we doomed?
+
+Statistical control, in the sense of cleanly removing the effect of COV, is not what one would be able to accomplish with ANCOVA.
+
+The importance of the question posed (Bock, 1975; Wainer, 1991): "A decision about the appropriate statistical procedure requires information outside of statistics."
+
+The issue is whether area 2 and area 5 are substantively important parts of GRP. If not, then after their removal GRP_res would still be a valid measure of the Group construct.
