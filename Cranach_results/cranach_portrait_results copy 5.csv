@@ -1,0 +1,11 @@
+Pair,Choice,Position,Time
+images/Portrait_of_Johann_Friedrich.jpg vs images/Portrait_of_Martin_Luther.jpg,images/Portrait_of_Martin_Luther.jpg,right,17.566
+images/Portrait_of_a_Lady.jpg vs images/Portrait_of_Martin_Luther.jpg,images/Portrait_of_a_Lady.jpg,left,3.118
+images/Portrait_of_Martin_Luther.jpg vs images/Portrait_of_a_Young_Girl.jpg,images/Portrait_of_a_Young_Girl.jpg,right,3.099
+images/Portrait_of_Martin_Luther.jpg vs images/Portrait_of_a_Saxon_Princess.jpg,images/Portrait_of_Martin_Luther.jpg,left,2.981
+images/Portrait_of_a_Lady.jpg vs images/Portrait_of_a_Young_Girl.jpg,images/Portrait_of_a_Young_Girl.jpg,right,3.728
+images/Portrait_of_a_Lady.jpg vs images/Portrait_of_a_Saxon_Princess.jpg,images/Portrait_of_a_Lady.jpg,left,1.719
+images/Portrait_of_Johann_Friedrich.jpg vs images/Portrait_of_a_Young_Girl.jpg,images/Portrait_of_a_Young_Girl.jpg,right,1.717
+images/Portrait_of_a_Lady.jpg vs images/Portrait_of_Johann_Friedrich.jpg,images/Portrait_of_a_Lady.jpg,left,6.765
+images/Portrait_of_a_Young_Girl.jpg vs images/Portrait_of_a_Saxon_Princess.jpg,images/Portrait_of_a_Young_Girl.jpg,left,1.462
+images/Portrait_of_Johann_Friedrich.jpg vs images/Portrait_of_a_Saxon_Princess.jpg,images/Portrait_of_Johann_Friedrich.jpg,left,6.373
