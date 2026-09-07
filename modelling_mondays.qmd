@@ -80,8 +80,7 @@ d\) simulate the process to study it better.
 
 This is someone who knows the function and its probability, is certain about the DGP. Let's say that they know that they are dealing with the normal distribution, which is formalised as:
 
-$$f(x | \theta) = \frac{1}{\sqrt{2\pi\sigma^2}} \cdot e^{-\frac{(x - \theta)^2}{2\sigma^2}}$$
- {#eq-1}
+$$f(x | \theta) = \frac{1}{\sqrt{2\pi\sigma^2}} \cdot e^{-\frac{(x - \theta)^2}{2\sigma^2}}$$ {#eq-1}
 
 where, *x* is the point of interest of the probability density function, $\theta$ is the mean (location parameter) of the normal distribution, and $\sigma$ is the standard deviation (spread parameter).
 
@@ -127,8 +126,7 @@ This is a more likely situation which I will illustrate here by trying to recove
 
 For the moment it is safe to say that what were trying to do here is to invert the process above, i.e. what you do with the probability density function. Instead of asking what data are likely to occur given a parameter (such as the mean and sd) that you *already* know about, here you ask, what is the most likely parameter that has given rise to the data I have.
 
-$$L(\mu, \sigma^2 | x_1, x_2, \ldots, x_n) = \prod_{i=1}^{n} \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x_i - \mu)^2}{2\sigma^2}\right)$$
- {#eq-2}
+$$L(\mu, \sigma^2 | x_1, x_2, \ldots, x_n) = \prod_{i=1}^{n} \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x_i - \mu)^2}{2\sigma^2}\right)$$ {#eq-2}
 
 Equation 2 states precisely that: what is the likelihood of this mean and variance, given all these data points? Equation 2 on the right-hand side contains the PDF, as above, but what it says is that it takes the probability at each step and multiplies them altogether, this is what that giant Greek $\Pi$ stands for, the product.
 
@@ -180,13 +178,11 @@ df_log_likelihood %>%
 
 Now let's turn to the simple linear regression model. Let's start by asking how to think formally of the data generating mechanism of any linear model. It should be a
 
-$$y_i = \beta_0 + \beta_1 x_i + \epsilon_i $$
- {#eq-5}
+$$y_i = \beta_0 + \beta_1 x_i + \epsilon_i $$ {#eq-5}
 
 where, $\epsilon_i$ follows a normal distribution with mean zero and variance $\sigma^2$
 
-$$L(\beta_0, \beta_1 | x_1, y_1, x_2, y_2, \ldots, x_n, y_n) = \prod_{i=1}^{n} f(y_i | \beta_0 + \beta_1 x_i)$$
- {#eq-6}
+$$L(\beta_0, \beta_1 | x_1, y_1, x_2, y_2, \ldots, x_n, y_n) = \prod_{i=1}^{n} f(y_i | \beta_0 + \beta_1 x_i)$$ {#eq-6}
 
 where $$f(y_i | \beta_0 + \beta_1 x_i) $$ {#eq-7} is the probability density function (PDF) of the normal distribution with mean $( \mu_i = \beta_0 + \beta_1 x_i )$ and constant variance $sigma^2$
 
@@ -259,8 +255,7 @@ I want to take us back to something which whilst obvious, is often forgotten, na
 
 Here is what I mean. The way to create the game above is to invoke the binomial distribution. This is the following:
 
-$$f(k;n,p) = \binom{n}{k} p^k (1-p)^{n-k}$$
- {#eq-3} where $\binom{n}{k}$ is the binomial coefficient (will explain this) and then come the probabilities.
+$$f(k;n,p) = \binom{n}{k} p^k (1-p)^{n-k}$$ {#eq-3} where $\binom{n}{k}$ is the binomial coefficient (will explain this) and then come the probabilities.
 
 Let's explain this. The binomial coefficient, basically says: if I have *n* objects and want to choose *k* of them, how many ways can this be done. Think of the following example. I have the letters ABCD; how many ways are there to combine two letters (sequnce doesn't matter, e.g. AB = BA) There are 6 possible ways: AB AC AD BC BD CD to play around with it, look at the code below.
 
@@ -411,8 +406,7 @@ The question is whether the likelihood at 0.5 (the null) is different to the lik
 
 Indeed, the likelihood ratio test will allow you to answer the numerate judge's question. Because you have taken logs, the problem simplifies to a subtraction (logging ratios turns to a subtraction).
 
-$$ \text{Likelihood  Ratio} = -2*(\text{Log Likelihood}_{0.5} - \text{Log Likelihood}_{ML} )$$
- {#eq-4}
+$$ \text{Likelihood  Ratio} = -2*(\text{Log Likelihood}_{0.5} - \text{Log Likelihood}_{ML} )$$ {#eq-4}
 
 Now, you may wonder about what that *2* is doing there--not to worry about it for the moment, its presence allows you to assume this difference follows a chi-squared distribution. Don't forget the minus sign--you will need this as the values of the chi-squared distribution are all positive.
 
@@ -498,8 +492,7 @@ $$P(A \cap B) = P(B\mid A) \cdot P(A)$$
 
 which then means that,
 
-$$P(A \mid B) \cdot P(B) = P(B \mid A) \cdot P(A)$$
- {#eq-10}
+$$P(A \mid B) \cdot P(B) = P(B \mid A) \cdot P(A)$$ {#eq-10}
 
 So, now you can estimate any of the two conditional probabilities, if you know the rest.
 
@@ -507,8 +500,7 @@ Let's apply this to our homicide example. Remember we need to estimate: $P(homic
 
 Therefore, rearranging and substituting our terms into Equation 10, we get:
 
-$$P(homicide\mid man) = \frac{P(man\mid homicide).P(homicide)}{P(man)}$$
- {#eq-11}
+$$P(homicide\mid man) = \frac{P(man\mid homicide).P(homicide)}{P(man)}$$ {#eq-11}
 
 **CONGRATULATIONS: you have just entered the world of the Reverend Thomas Bayes! This is his theorem applied to homicides!**
 
@@ -587,13 +579,11 @@ This quantity is fundamental to all medical tests and indeed all tests where you
 
 ![](Image_1.jpeg)The two key equations here are:
 
-$$P(homicide+|test+) = \frac{P(test+|homicide+).P(homicide+)}{P(test+)}$$
- {#eq-12}
+$$P(homicide+|test+) = \frac{P(test+|homicide+).P(homicide+)}{P(test+)}$$ {#eq-12}
 
 Notice the similarity of this equation with that of Equation 11. I have also added in red some nomenclature that we will be encountering very soon, in the next lesson. Now, as I have derived above, there is another way to derive the same quantity using the known properties of the sensitivity and specificity and the prevalence of the population, without needing any other information.
 
-$$P(homicide+|test+) = \frac{P(test+|homicide+).P(homicide+)}{sensitivity.P(homicide+) + (1-specificity).P(homicide-)}$$
- {#eq-13}
+$$P(homicide+|test+) = \frac{P(test+|homicide+).P(homicide+)}{sensitivity.P(homicide+) + (1-specificity).P(homicide-)}$$ {#eq-13}
 
 Look at the denominators of both Eq. 12 and 13. These are the marginal likelihoods (also called the evidence). They are cumbersome, but not nearly as complex as what we will be encountering soon, even for solving the same simple binomial problem that we had solved in the last lesson. Indeed, these denominators are often analytically intractable and require approaches such as MCMC algorithms.
 
@@ -672,30 +662,25 @@ Let's write out some simple operations in fancy terms.
 
 What is the probability of being female and not being a murderer on the basis of the observed data?
 
-$$P(gender == female\cap homicide == no) = 50167/10^5 = 0.5017$$
- {#eq-14}
+$$P(gender == female\cap homicide == no) = 50167/10^5 = 0.5017$$ {#eq-14}
 
 But, let's go even more fancy, let's apply the Bayesian theorem and the relationship between joint and conditional probabilities.
 
-$$P(gender == female \cap homicide == no) = P(gender == female |homicide == no).P(homicide == no)$$
- {#eq-15}
+$$P(gender == female \cap homicide == no) = P(gender == female |homicide == no).P(homicide == no)$$ {#eq-15}
 
 This gives us the same result as you can verify by multiplying the two fractions: 50167/99980 x 99980/10\^5.
 
 This is a bit ridiculous and a near tautology, but humour me for a bit. What if I asked you what the following quantity is (which is the equivalent of Equations 6.8 and 6.9 in the Farrell and Lewandowsky book:
 
-$$P(gender == female) = \sum_{\theta} P(\text{female} \mid \text{homiicide}) \cdot P(\text{homicide})$$
- {#eq-16}
+$$P(gender == female) = \sum_{\theta} P(\text{female} \mid \text{homiicide}) \cdot P(\text{homicide})$$ {#eq-16}
 
 You needn't worry of course, because all you have to do is to calculate eq-16 is to add eq-15 and eq 17 below (which is its counterpart, the cell right next to it, i.e. murdering females.
 
-$$P(gender == female \cap homicide == yes) = P(gender == female |homicide == yes).P(homicide == yes)$$
- {#eq-17}
+$$P(gender == female \cap homicide == yes) = P(gender == female |homicide == yes).P(homicide == yes)$$ {#eq-17}
 
 Which gives you: (2/20\*20/10\^5) and is the same as doing the following simpler calculation.
 
-$$P(gender == female|homicide == yes) = 2/10^5 = 2x10^-5$$
- {#eq-18}
+$$P(gender == female|homicide == yes) = 2/10^5 = 2x10^-5$$ {#eq-18}
 
 Now, all you have to do is add the results of
 
@@ -723,23 +708,19 @@ c\) if you want to do the statistical estimation you will need some extra tools.
 
 From the discourse above, we need to remember equation 17, which I am writing here in its general form:
 
-$$P(y) = \sum_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)$$
- {#eq-19}
+$$P(y) = \sum_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)$$ {#eq-19}
 
 This is the broad definition of the marginal likelihood and it is going to pop up very often. Equation 20 is simply its instantiation for continuous variables
 
-$$P(y) = \int_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)d\theta$$
- {#eq-20}
+$$P(y) = \int_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)d\theta$$ {#eq-20}
 
 Then of course the fundamental Bayesian equation is written as:
 
-$$P(\theta\mid y) = \frac {P(y \mid\theta ). P(\theta)}{\sum_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)}$$
- {#eq-21}
+$$P(\theta\mid y) = \frac {P(y \mid\theta ). P(\theta)}{\sum_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)}$$ {#eq-21}
 
 or, for continuous quantities,
 
-$$P(\theta\mid y) = \frac {P(y \mid\theta ). P(\theta)}{\int_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)d\theta}$$
- {#eq-22}
+$$P(\theta\mid y) = \frac {P(y \mid\theta ). P(\theta)}{\int_{\theta} P(\text{y} \mid \theta) \cdot P(\theta)d\theta}$$ {#eq-22}
 
 IMPORTANT: $P(\theta\mid y)$ is the posterior distribution, it is what every Bayesian analysis strives for.
 
@@ -759,8 +740,7 @@ For this let's turn to the beta distribution and highlight some interesting feat
 
 I will start at the end, with a re-writing of the equation 6. 24 in the book for obtaining the posterior distribution of a coin toss with *n* tosses and *k* heads:
 
-$$P(\theta \mid k,n) = beta(\theta|\alpha + k, \beta + n -k) $$
- {#eq-23}
+$$P(\theta \mid k,n) = beta(\theta|\alpha + k, \beta + n -k) $$ {#eq-23}
 
 This basically says that if you toss a coin and want to use a Bayesian approach (and you choose as most Bayesians would) the beta distribution as a prior, all you have do is add something to those priors!
 
@@ -770,8 +750,7 @@ But let's start with some basics.
 
 Let's get an intuition for the beta. I am writing out its probability density function:
 
-$$f(x; \alpha, \beta) = \frac{x^{\alpha - 1} (1 - x)^{\beta - 1}}{B(\alpha, \beta)}$$
- {#eq-24}
+$$f(x; \alpha, \beta) = \frac{x^{\alpha - 1} (1 - x)^{\beta - 1}}{B(\alpha, \beta)}$$ {#eq-24}
 
 We can glean that it has bits that look like the binomial in the numerator (and actually also in the denominator). We will delve into this next time.
 
@@ -939,8 +918,7 @@ $$P(\theta\mid y) = \frac {P(y \mid\theta ). P(\theta)}{\int_{\theta} P(\text{y}
 
 can be reduced to:
 
-$$P(\theta\mid y) \propto P(y \mid\theta ). P(\theta)$$
- {#eq-25}
+$$P(\theta\mid y) \propto P(y \mid\theta ). P(\theta)$$ {#eq-25}
 
 Where $\propto$ means proportional to, the posterior is proportional to the Bayes numerator, i.e. the likelihood times the prior.
 
@@ -1527,8 +1505,7 @@ $$\begin{aligned}
 SSE & = \sum_{i=1}^n(y_i - \hat y_i)^2  \\
 & = \sum_{i=1}^n(y_i - (\hat \beta_0 + \hat \beta_1.x_i)^2) \\
 & = \sum_{i=1}^n(y_i - \hat \beta_0 - \hat \beta_1.x_i)^2
-\end{aligned}$$
- {#eq-28}
+\end{aligned}$$ {#eq-28}
 
 Now let's take the derivative with respect to the intercept. By doing this, we will arrive at some expression that we will be able to set to zero and solve to find the minima.
 
@@ -1544,16 +1521,14 @@ $$\begin{aligned}
 
 and then solving each one of them by setting each equal to zero. We can derive this together in class and here is a link where this is done. It is fundamentally simple, but involves a few algebraic tricks to get to the end product which is the following for the intercept:
 
-$$\hat{\beta}_0 = \overline{y} - \hat{\beta}_1 \overline{x}$$
- {#eq-29}
+$$\hat{\beta}_0 = \overline{y} - \hat{\beta}_1 \overline{x}$$ {#eq-29}
 
 and for the slope:
 
 $$\begin{aligned}
 \hat \beta_1 = \frac{\sum_{i=1}^{n} (x_i - \overline{x})(y_i - \overline{y})} {\sum_{i=1}^{n} (x_i - \overline{x})^2} 
 & = \frac{SXY}{SXX}
-\end{aligned}$$
- {#eq-30}
+\end{aligned}$$ {#eq-30}
 
 There are several things to marvel at here, including the importance of the mean in all this. This is what your programme churns out and allows you to do the maths.
 
@@ -1796,14 +1771,14 @@ Notice the intercept now. Also, see the code chunk below where I demonstrate the
 # extracting posterior samples
 posterior_samples_uncentered <- extract(fit_slope_stan_uncentered)
 posterior_samples <- extract(fit_slope_stan)
-cor(beta_0_samples, beta_1_samples)
+
 # getting beta_0 and beta_1 for the centred and uncentred
 beta_0_samples_uncentered <- posterior_samples_uncentered $beta_0
 beta_1_samples_uncentered  <- posterior_samples_uncentered $beta_1
 
 beta_0_samples <- posterior_samples$beta_0
 beta_1_samples <- posterior_samples$beta_1
-
+cor(beta_0_samples, beta_1_samples)
 # correlation for the uncentered
 cor(beta_0_samples_uncentered, beta_1_samples_uncentered)
 cor(beta_0_samples, beta_1_samples)
@@ -1852,13 +1827,13 @@ plot(beta_1_samples, type = "l", main = "Trace plot for beta_1", ylab = "beta_1"
 
 How do you interpret the output of the regression model (assuming for the moment that it ran correctly!). Here are some question to help.
 
-- is there a quick way to test whether your model is a good represetation of the dat.
+-   is there a quick way to test whether your model is a good represetation of the dat.
 
-- what are the units of the slope and what are those of the intercept. What are the units for your statement?
+-   what are the units of the slope and what are those of the intercept. What are the units for your statement?
 
-- What do the credible intervals above mean?
+-   What do the credible intervals above mean?
 
-- How tall would you expect a person to be who is 90 kg of weight? How would you find that? Is this a prediction? How certain can you be about your finding?
+-   How tall would you expect a person to be who is 90 kg of weight? How would you find that? Is this a prediction? How certain can you be about your finding?
 
 ### Is this a good model? Simulating from the data.
 
@@ -2403,22 +2378,19 @@ Below, I am showing you that you can arrive at a formulation that links the line
 
 I am rewriting the last few bits here as they are extremely important:
 
-$$exp(\beta_0 + beta_1.x) = \frac{P}{1-P} = odds$$
- {#eq-9.8}
+$$exp(\beta_0 + beta_1.x) = \frac{P}{1-P} = odds$$ {#eq-9.8}
 
 This is the connection between the linear equation and the odds
 
 and
 
-$$beta_0 + beta_1.x = ln(\frac{P}{1-P}) = log_odds$$
- {#eq-9.9}
+$$beta_0 + beta_1.x = ln(\frac{P}{1-P}) = log_odds$$ {#eq-9.9}
 
 and this is the logit, the link function, which connects the linear predictor to the log odds.
 
 For a continuous variable X, then the odds ratio OR can be interpreted as follows:
 
-$$OR = \frac{O(x+1)}{O(x)} = \frac{\frac{P(x+1)}{1-P(x+1)}}{\frac{P(x)}{1-P(x)}}= \frac{exp(\beta_0 + beta_1.(x+1))}{exp(\beta_0 + beta_1.(x))} = exp(\beta_1)$$
- {#eq-9.10}
+$$OR = \frac{O(x+1)}{O(x)} = \frac{\frac{P(x+1)}{1-P(x+1)}}{\frac{P(x)}{1-P(x)}}= \frac{exp(\beta_0 + beta_1.(x+1))}{exp(\beta_0 + beta_1.(x))} = exp(\beta_1)$$ {#eq-9.10}
 
 In other words, the exponentiated coefficient $\beta_1$ in the regression model can be interpreted as an odds ratio of the increase (or decrease) by a unit change in the continuous predictor variable.
 
@@ -2717,7 +2689,7 @@ So, for the 5 portraits we had 10 pairs presented. This results in a ranking of 
 
 ```{r}
 
-list_results_cranach <- list.files("/Users/argyris/Downloads/Cranach_results", all.files = T,
+list_results_cranach <- list.files("Cranach_results", all.files = T,
                                    pattern = ".csv", full.names = T)
 list_df_results <- list()
 
@@ -2808,8 +2780,7 @@ We see that, as one would have expected, Portrait of a Lady tops the preferences
 
 Now we will want to model these data. The Bradley-Terry model asks the simple question about how much more likely it is for item $i$ ot be preferred over item $j$ , say how much more likely it is for Portrait of a Lady to be preferred over Portrait of Martin Luther whenever they are presented next to each other. Formally, this can be expressed as:
 
-$$P(i>j) = \frac{P(i)}{P(i) + P(j)}$$
- {#eq-11.1}
+$$P(i>j) = \frac{P(i)}{P(i) + P(j)}$$ {#eq-11.1}
 
 So, let's look at our example of how many more times Portrait of a Lady to be preferred over Portrait of Martin Luther.
 
@@ -2840,8 +2811,7 @@ But let's run a simple BT model on all our data.
 
 Let's reformulate the model as log odds (remember, odds is the probability of an event happening over its complement, i.e. the event not happening):
 
-$$logitP(i>j) = log\frac{P(i>j)}{(1-P(i>j))} =  log\frac{P(i>j)}{P_(j>i)} $$
- {#eq-11.2}
+$$logitP(i>j) = log\frac{P(i>j)}{(1-P(i>j))} =  log\frac{P(i>j)}{P_(j>i)} $$ {#eq-11.2}
 
 The last step is due to the simplification The formulation of the BT model uses the log to find the coefficients, i.e.
 
@@ -2853,9 +2823,7 @@ $$logitP(i>j) = log\frac{P(i)}{P(j)}$$
 
 Now, the BT is formulated by expressing the log of the P(i) as a coefficient $\beta$
 
-$$logit(P(i>j)) = log\frac{P(i)}{P(j)}= log\frac{e^{\beta_i}}{e^{\beta_j}}= \beta_i - \beta_j$$
-If the middle part is difficult to follow, think of the following (which we know to be true because that's how $\log$ works.
-$$log\frac{P(i)}{P(j)} = log(P(i)) - log(P(j)) = \beta_i - \beta_j$$
+$$logit(P(i>j)) = log\frac{P(i)}{P(j)}= log\frac{e^{\beta_i}}{e^{\beta_j}}= \beta_i - \beta_j$$ If the middle part is difficult to follow, think of the following (which we know to be true because that's how $\log$ works. $$log\frac{P(i)}{P(j)} = log(P(i)) - log(P(j)) = \beta_i - \beta_j$$
 
 Why use a $\beta$ to express this? There are two inter-related reasons, remember that we want to express all these models with exponential distributions as a general linear model, i.e. as something that involves the simple linear equation. The related reasons is that the log probability is easier to handle in a model, not least because it can take on negative numbers and because we turn multiplicative relationships into additive ones (as mentioned above). For example here we can say that the logit of the strength of item $i$ over $j$ is the difference between these two coefficients.
 
@@ -2946,7 +2914,9 @@ df_results_cranach_BT$Portrait_2 <- as.factor(df_results_cranach_BT$Portrait_2)
 
 
 
-bt_model <- BTm(
+library(BradleyTerry2)
+
+bt_model <-BradleyTerry2:: BTm(
   cbind(win_1, win_2), 
   player1 = Portrait_1, 
   player2 = Portrait_2, 
@@ -2958,9 +2928,7 @@ summary(update(bt_model, refcat = "Portrait_of_a_Lady"))
 ```
 
 ```{r}
-# Install and load the BradleyTerry2 package if necessary
-install.packages("BradleyTerry2")
-library(BradleyTerry2)
+
 
 # Prepare the data
 data <- data.frame(
